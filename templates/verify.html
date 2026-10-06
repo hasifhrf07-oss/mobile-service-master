@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Verification — Mobile Service Master</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: "Nirmala UI", Arial, sans-serif;
+    background: linear-gradient(135deg, #1e1e2e 0%, #181825 100%);
+    color: #e0e0e0;
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+  }
+
+  .verify-box {
+    width: 100%;
+    max-width: 420px;
+    background: #1e1e2e;
+    border-radius: 15px;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+    overflow: hidden;
+  }
+
+  .header {
+    background: linear-gradient(135deg, #a6e3a1 0%, #89b4fa 100%);
+    padding: 30px;
+    text-align: center;
+    color: #1e1e2e;
+  }
+
+  .header .icon {
+    font-size: 55px;
+    margin-bottom: 10px;
+  }
+
+  .header h1 {
+    font-size: 20px;
+    margin-bottom: 5px;
+  }
+
+  .header p {
+    font-size: 13px;
+    opacity: 0.85;
+  }
+
+  .form-body {
+    padding: 30px;
+  }
+
+  .info-box {
+    background: #181825;
+    padding: 15px;
+    border-radius: 8px;
+    border-left: 3px solid #f9e2af;
+    margin-bottom: 20px;
+    font-size: 13px;
+    line-height: 1.7;
+    color: #cdd6f4;
+  }
+
+  label {
+    display: block;
+    margin-bottom: 8px;
+    color: #a6adc8;
+    font-size: 13px;
+    font-weight: bold;
+  }
+
+  input {
+    width: 100%;
+    background: #11111b;
+    color: #cdd6f4;
+    border: 1px solid #45475a;
+    padding: 16px;
+    border-radius: 8px;
+    font-size: 26px;
+    text-align: center;
+    letter-spacing: 10px;
+    font-weight: bold;
+    margin-bottom: 16px;
+    font-family: monospace;
+  }
+
+  input:focus {
+    outline: none;
+    border-color: #89b4fa;
+  }
+
+  button {
+    width: 100%;
+    background: linear-gradient(135deg, #a6e3a1 0%, #89b4fa 100%);
+    color: #1e1e2e;
+    border: none;
+    padding: 14px;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: 0.3s;
+    font-family: inherit;
+  }
+
+  button:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 20px rgba(166,227,161,0.4);
+  }
+
+  button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
+  .message {
+    padding: 12px 16px;
+    border-radius: 8px;
+    margin-bottom: 16px;
+    font-size: 14px;
+    display: none;
+  }
+
+  .message.error {
+    background: rgba(243,139,168,0.15);
+    border-left: 3px solid #f38ba8;
+    color: #f38ba8;
+    display: block;
+  }
+
+  .message.success {
+    background: rgba(166,227,161,0.15);
+    border-left: 3px solid #a6e3a1;
+    color: #a6e3a1;
+    display: block;
+  }
+</style>
+</head>
+<body>
+<div class="verify-box">
+  <div class="header">
+    <div class="icon">📧</div>
+    <h1>Email Verification</h1>
+    <p>কোড পাঠানো হয়েছে</p>
+  </div>
+
+  <div class="form-body">
+    <div class="info-box">
+      <b>📧 Email:</b> {{ email }}<br><br>
+      <b>Verification Code (OTP)</b> আপনার terminal-এ print হয়েছে।<br>
+      সেখান থেকে ৬-ডিজিটের কোড দেখে নিচে type করুন।
+    </div>
+
+    <div id="message" class="message"></div>
+
+    <label>🔢 6-digit Verification Code</label>
+    <input type="text" id="otp" maxlength="6" placeholder="------" inputmode="numeric" autofocus>
+
+    <button id="btn" onclick="doVerify()">✅ Verify & Login</button>
+  </div>
+</div>
+
+<script>
+function showMessage(text, type) {
+  const m = document.getElementById('message');
+  m.className = 'message ' + type;
+  m.textContent = text;
+}
+
+async function doVerify() {
+  const otp = document.getElementById('otp').value.trim();
+
+  if (otp.length !== 6) {
+    showMessage('৬-ডিজিটের কোড দিন', 'error');
+    return;
+  }
+
+  const btn = document.getElementById('btn');
+  btn.disabled = true;
+  btn.textContent = '⏳ Verifying...';
+
+  try {
+    const res = await fetch('/verify', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({otp})
+    });
+    const data = await res.json();
+
+    if (!data.ok) {
+      showMessage(data.message || 'Verification ব্যর্থ', 'error');
+      btn.disabled = false;
+      btn.textContent = '✅ Verify & Login';
+      return;
+    }
+
+    showMessage('✅ Verified! Loading dashboard...', 'success');
+    setTimeout(() => {
+      window.location.href = '/dashboard';
+    }, 800);
+  } catch (err) {
+    showMessage('Network error: ' + err.message, 'error');
+    btn.disabled = false;
+    btn.textContent = '✅ Verify & Login';
+  }
+}
+
+// Auto-submit when 6 digits entered
+document.getElementById('otp').addEventListener('input', (e) => {
+  if (e.target.value.length === 6) {
+    doVerify();
+  }
+});
+
+// Enter key
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') doVerify();
+});
+</script>
+</body>
+</html>

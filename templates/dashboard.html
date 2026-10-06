@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard — Mobile Service Master</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:"Nirmala UI",Arial,sans-serif;background:linear-gradient(135deg,#1e1e2e,#181825);color:#e0e0e0;min-height:100vh;padding:15px}
+.container{max-width:1000px;margin:0 auto;background:#1e1e2e;border-radius:15px;box-shadow:0 10px 40px rgba(0,0,0,.5);overflow:hidden}
+.header{background:linear-gradient(135deg,#89b4fa,#cba6f7);padding:18px 22px;color:#1e1e2e;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px}
+.header h1{font-size:18px;display:flex;align-items:center;gap:8px}
+.user{font-size:12px;text-align:right}
+.user .email{font-weight:bold}
+.logout{background:rgba(30,30,46,.3);color:#1e1e2e;border:none;padding:6px 14px;border-radius:15px;cursor:pointer;font-size:12px;font-weight:bold;margin-top:5px;font-family:inherit}
+.tabs{display:flex;background:#181825;border-bottom:2px solid #313244;overflow-x:auto}
+.tab{flex:1;min-width:100px;padding:14px 12px;text-align:center;cursor:pointer;background:#181825;color:#a6adc8;font-size:13px;font-weight:bold;border:none;font-family:inherit}
+.tab.active{background:#313244;color:#89b4fa;border-bottom:3px solid #89b4fa}
+.content{padding:22px;min-height:480px}
+.panel{display:none}
+.panel.active{display:block}
+
+/* Search Bar */
+.search-card{background:linear-gradient(135deg,rgba(137,180,250,.15),rgba(203,166,247,.15));padding:20px;border-radius:12px;margin-bottom:20px;border:1px solid #45475a}
+.search-card h3{color:#cba6f7;font-size:14px;margin-bottom:12px;text-transform:uppercase;letter-spacing:1px}
+.search-row{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+.search-input{flex:1;min-width:180px;background:#11111b;color:#cdd6f4;border:1px solid #45475a;padding:12px 14px;border-radius:8px;font-size:14px;font-family:inherit}
+.search-input:focus{outline:none;border-color:#89b4fa}
+.search-btn{background:linear-gradient(135deg,#89b4fa,#cba6f7);color:#1e1e2e;border:none;padding:12px 28px;border-radius:8px;font-size:14px;font-weight:bold;cursor:pointer;font-family:inherit}
+.search-btn:hover{opacity:.9}
+.update-btn{background:#f9e2af;color:#1e1e2e;border:none;padding:12px 24px;border-radius:8px;font-size:14px;font-weight:bold;cursor:pointer;font-family:inherit;display:none}
+.update-btn:hover{opacity:.9}
+
+.search-result{background:#181825;padding:14px 18px;border-radius:8px;font-size:14px;line-height:1.7;margin-top:12px;border-left:4px solid #89b4fa;display:none}
+.search-result.found{border-left-color:#a6e3a1;background:rgba(166,227,161,.08)}
+.search-result.notfound{border-left-color:#f9e2af;background:rgba(249,226,175,.08)}
+.search-result.error{border-left-color:#f38ba8;background:rgba(243,139,168,.08)}
+.model-info{margin-top:10px;padding:10px;background:#11111b;border-radius:6px;font-family:monospace;font-size:13px;color:#cdd6f4}
+.model-info .row{display:flex;justify-content:space-between;padding:4px 0}
+.model-info .lbl{color:#a6adc8}
+
+/* Stats */
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:20px}
+.stat{background:#181825;padding:16px;border-radius:10px;border-left:4px solid #89b4fa}
+.stat .num{font-size:26px;font-weight:bold;color:#89b4fa}
+.stat .lbl{font-size:11px;color:#a6adc8;margin-top:4px;text-transform:uppercase}
+
+/* Connect */
+.connect-area{text-align:center;padding:30px 20px}
+.connect-icon{font-size:70px;margin-bottom:15px}
+.connect-title{font-size:19px;color:#89b4fa;font-weight:bold;margin-bottom:10px}
+.connect-sub{font-size:14px;color:#a6adc8;margin-bottom:25px;line-height:1.6}
+.btn{background:linear-gradient(135deg,#89b4fa,#cba6f7);color:#1e1e2e;border:none;padding:14px 40px;border-radius:30px;font-size:16px;font-weight:bold;cursor:pointer;font-family:inherit}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.status-area{margin-top:25px;min-height:80px}
+.status-msg{background:#181825;border-left:4px solid #89b4fa;padding:14px 18px;border-radius:8px;margin:10px 0;font-size:14px;line-height:1.6}
+.status-msg.success{border-left-color:#a6e3a1;background:rgba(166,227,161,.08)}
+.status-msg.warning{border-left-color:#f9e2af;background:rgba(249,226,175,.08)}
+.status-msg.error{border-left-color:#f38ba8;background:rgba(243,139,168,.08)}
+
+/* Progress */
+.progress-steps{display:flex;justify-content:space-between;margin:25px 0;position:relative}
+.progress-steps::before{content:'';position:absolute;top:20px;left:10%;right:10%;height:2px;background:#313244;z-index:0}
+.step{flex:1;text-align:center;position:relative;z-index:1}
+.step-icon{width:40px;height:40px;border-radius:50%;background:#313244;color:#6c7086;display:flex;align-items:center;justify-content:center;margin:0 auto 8px;font-size:17px}
+.step.active .step-icon{background:#89b4fa;color:#1e1e2e}
+.step.done .step-icon{background:#a6e3a1;color:#1e1e2e}
+.step-lbl{font-size:11px;color:#6c7086}
+
+/* Cards */
+.card{background:#181825;padding:18px;border-radius:10px;margin-bottom:15px;border-left:4px solid #89b4fa}
+.card h3{color:#89b4fa;font-size:13px;margin-bottom:12px;text-transform:uppercase;letter-spacing:1px}
+.row-info{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #313244;font-size:14px}
+.row-info:last-child{border-bottom:none}
+.row-info .lbl{color:#a6adc8}
+.row-info .val{color:#cdd6f4;font-weight:bold}
+.prob{display:flex;align-items:center;padding:11px 15px;background:#181825;border-radius:8px;margin:7px 0;border-left:4px solid #313244;font-size:13px}
+.prob.ok{border-left-color:#a6e3a1}
+.prob.warn{border-left-color:#f9e2af}
+.prob.err{border-left-color:#f38ba8}
+.prob .pico{font-size:18px;margin-right:10px}
+.prob .plbl{flex:1;color:#cdd6f4}
+.prob .pval{color:#a6adc8;font-weight:bold}
+.empty{text-align:center;padding:60px 20px;color:#6c7086}
+.empty .icon{font-size:55px;display:block;margin-bottom:15px;opacity:.4}
+table{width:100%;border-collapse:collapse;background:#181825;border-radius:10px;overflow:hidden;font-size:13px}
+th{background:#252536;color:#89b4fa;padding:11px 9px;text-align:left;font-size:12px;text-transform:uppercase}
+td{padding:11px 9px;border-bottom:1px solid #313244;color:#cdd6f4}
+tr:hover td{background:#252536}
+.badge{display:inline-block;padding:3px 9px;border-radius:12px;font-size:11px;font-weight:bold}
+.badge.s{background:rgba(166,227,161,.2);color:#a6e3a1}
+.badge.d{background:rgba(243,139,168,.2);color:#f38ba8}
+.badge.w{background:rgba(249,226,175,.2);color:#f9e2af}
+.badge.i{background:rgba(137,180,250,.2);color:#89b4fa}
+.ucard{background:linear-gradient(135deg,rgba(137,180,250,.15),rgba(203,166,247,.15));padding:18px;border-radius:12px;margin-bottom:18px;border:1px solid #45475a}
+.ucard h3{color:#cba6f7;font-size:13px;margin-bottom:12px;text-transform:uppercase}
+.ugrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px}
+.ugrid .lbl{color:#6c7086;font-size:11px;text-transform:uppercase}
+.ugrid .val{color:#cdd6f4;font-size:14px;font-weight:bold;margin-top:3px;word-break:break-all}
+.hhead{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;flex-wrap:wrap;gap:10px}
+.hhead h2{color:#89b4fa;font-size:17px}
+.rbtn{background:#313244;color:#89b4fa;border:1px solid #45475a;padding:8px 14px;border-radius:6px;cursor:pointer;font-size:13px;font-family:inherit}
+@media(max-width:600px){.content{padding:15px}.tab{padding:12px 8px;font-size:11px;min-width:80px}.search-btn,.update-btn{width:100%}table{font-size:11px}th,td{padding:8px 6px}}
+</style>
+</head>
+<body>
+<div class="container">
+
+<div class="header">
+  <h1>🔧 Mobile Service Master</h1>
+  <div class="user">
+    <div class="email">👤 {{ email }}</div>
+    <div style="opacity:.7;font-size:11px">{{ login_time[:19] }}</div>
+    <button class="logout" onclick="logout()">Logout</button>
+  </div>
+</div>
+
+<div class="tabs">
+  <button class="tab active" data-tab="connect">📱 Connect</button>
+  <button class="tab" data-tab="result">📊 Result</button>
+  <button class="tab" data-tab="history">📜 History</button>
+  <button class="tab" data-tab="settings">⚙️ Settings</button>
+</div>
+
+<div class="content">
+
+<!-- CONNECT TAB -->
+<div id="panel-connect" class="panel active">
+
+  <!-- SEARCH BAR -->
+  <div class="search-card">
+    <h3>🔍 Model Search (Company + Model)</h3>
+    <div class="search-row">
+      <input type="text" id="searchBrand" class="search-input" placeholder="Brand (Samsung, Xiaomi...)" onkeydown="if(event.key==='Enter')searchModel()">
+      <input type="text" id="searchModel" class="search-input" placeholder="Model (SM-A105F, Redmi 9...)" onkeydown="if(event.key==='Enter')searchModel()">
+      <button class="search-btn" onclick="searchModel()">🔍 Search</button>
+      <button id="updateBtn" class="update-btn" onclick="addModel()">➕ Update / Add</button>
+    </div>
+    <div id="searchResult" class="search-result"></div>
+  </div>
+
+  <!-- DB STATS -->
+  <div class="stats">
+    <div class="stat"><div class="num" id="totalModels">—</div><div class="lbl">Total Models</div></div>
+    <div class="stat"><div class="num" id="totalClones">—</div><div class="lbl">Clone Models</div></div>
+  </div>
+
+  <!-- CONNECT DEVICE -->
+  <div class="connect-area">
+    <div class="connect-icon">📱</div>
+    <div class="connect-title">App-এর সাথে connect করুন</div>
+    <div class="connect-sub">USB cable দিয়ে ফোন connect করুন<br>তারপর নিচের button-এ click করুন</div>
+    <button id="btn" class="btn" onclick="startConnect()">🔌 Connect Now</button>
+  </div>
+  <div class="progress-steps" id="progress" style="display:none">
+    <div class="step" id="s1"><div class="step-icon">1</div><div class="step-lbl">Connect</div></div>
+    <div class="step" id="s2"><div class="step-icon">2</div><div class="step-lbl">Scan</div></div>
+    <div class="step" id="s3"><div class="step-icon">3</div><div class="step-lbl">Analysis</div></div>
+    <div class="step" id="s4"><div class="step-icon">4</div><div class="step-lbl">Report</div></div>
+  </div>
+  <div id="status" class="status-area"></div>
+</div>
+
+<!-- RESULT TAB -->
+<div id="panel-result" class="panel">
+  <div id="result" class="empty"><span class="icon">📊</span><p>এখনো কোনো result নেই</p></div>
+</div>
+
+<!-- HISTORY TAB -->
+<div id="panel-history" class="panel">
+  <div class="hhead"><h2>📜 Service History</h2><button class="rbtn" onclick="loadHistory()">🔄 Refresh</button></div>
+  <div id="history"><div class="empty"><span class="icon">⏳</span><p>Loading...</p></div></div>
+</div>
+
+<!-- SETTINGS TAB -->
+<div id="panel-settings" class="panel">
+  <div class="hhead"><h2>⚙️ Settings</h2><button class="rbtn" onclick="loadSettings()">🔄 Refresh</button></div>
+  <div id="settings"><div class="empty"><span class="icon">⏳</span><p>Loading...</p></div></div>
+</div>
+
+</div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════
+// Tab Switching
+// ═══════════════════════════════════════════════════════════
+document.querySelectorAll('.tab').forEach(t => t.addEventListener('click', () => {
+  document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  t.classList.add('active');
+  document.getElementById('panel-' + t.dataset.tab).classList.add('active');
+  if (t.dataset.tab === 'history') loadHistory();
+  if (t.dataset.tab === 'settings') loadSettings();
+}));
+
+// ═══════════════════════════════════════════════════════════
+// Search Model
+// ═══════════════════════════════════════════════════════════
+let lastSearch = {brand: '', model: ''};
+
+async function searchModel() {
+  const brand = document.getElementById('searchBrand').value.trim();
+  const model = document.getElementById('searchModel').value.trim();
+  const resultBox = document.getElementById('searchResult');
+  const updateBtn = document.getElementById('updateBtn');
+
+  if (!brand && !model) {
+    resultBox.style.display = 'block';
+    resultBox.className = 'search-result error';
+    resultBox.innerHTML = '⚠️ Brand or Model likhun';
+    return;
+  }
+
+  lastSearch = {brand, model};
+
+  resultBox.style.display = 'block';
+  resultBox.className = 'search-result';
+  resultBox.innerHTML = '⏳ Searching...';
+  updateBtn.style.display = 'none';
+
+  try {
+    const res = await fetch(`/api/search-model?brand=${encodeURIComponent(brand)}&model=${encodeURIComponent(model)}`);
+    const data = await res.json();
+
+    if (data.found) {
+      resultBox.className = 'search-result found';
+      let html = '<b>✅ পাওয়া গেছে!</b><br>' + data.message;
+
+      if (data.model) {
+        const m = data.model;
+        html += '<div class="model-info">';
+        html += `<div class="row"><span class="lbl">Brand:</span><span>${m.brand || '-'}</span></div>`;
+        html += `<div class="row"><span class="lbl">Model:</span><span>${m.model || '-'}</span></div>`;
+        html += `<div class="row"><span class="lbl">Chipset:</span><span>${m.chipset || '-'}</span></div>`;
+        html += `<div class="row"><span class="lbl">Android:</span><span>${m.android_ver || '-'}</span></div>`;
+        html += `<div class="row"><span class="lbl">Year:</span><span>${m.release_year || '-'}</span></div>`;
+        html += '</div>';
+      } else if (data.results) {
+        html += `<div class="model-info">`;
+        data.results.slice(0, 5).forEach(r => {
+          html += `<div class="row"><span class="lbl">${r.brand}:</span><span>${r.model}</span></div>`;
+        });
+        html += '</div>';
+      }
+
+      resultBox.innerHTML = html;
+    } else {
+      resultBox.className = 'search-result notfound';
+      resultBox.innerHTML = `<b>${data.message}</b><br><small style="color:#a6adc8">Click "➕ Update / Add" to add this model</small>`;
+      updateBtn.style.display = 'inline-block';
+    }
+  } catch (e) {
+    resultBox.className = 'search-result error';
+    resultBox.innerHTML = '❌ Error: ' + e.message;
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+// Add Model
+// ═══════════════════════════════════════════════════════════
+async function addModel() {
+  const {brand, model} = lastSearch;
+
+  if (!brand || !model) {
+    alert('Brand & Model dutoi lagbe');
+    return;
+  }
+
+  if (!confirm(`Add "${brand} ${model}" to database?`)) return;
+
+  const resultBox = document.getElementById('searchResult');
+  const updateBtn = document.getElementById('updateBtn');
+
+  updateBtn.disabled = true;
+  updateBtn.textContent = '⏳ Adding...';
+
+  try {
+    const res = await fetch('/api/add-model', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({brand, model})
+    });
+    const data = await res.json();
+
+    resultBox.className = 'search-result ' + (data.ok ? 'found' : 'error');
+    resultBox.innerHTML = '<b>' + data.message + '</b>';
+
+    if (data.ok) {
+      updateBtn.style.display = 'none';
+      // Refresh stats
+      loadDbStats();
+    }
+  } catch (e) {
+    resultBox.className = 'search-result error';
+    resultBox.innerHTML = '❌ Error: ' + e.message;
+  } finally {
+    updateBtn.disabled = false;
+    updateBtn.textContent = '➕ Update / Add';
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+// DB Stats
+// ═══════════════════════════════════════════════════════════
+async function loadDbStats() {
+  try {
+    const res = await fetch('/api/db-stats');
+    const d = await res.json();
+    if (d.ok) {
+      document.getElementById('totalModels').textContent = d.total_models || 0;
+      document.getElementById('totalClones').textContent = d.clones || 0;
+    }
+  } catch (e) {}
+}
+
+// ═══════════════════════════════════════════════════════════
+// Connect Flow
+// ═══════════════════════════════════════════════════════════
+function addStatus(type, icon, text) {
+  const d = document.createElement('div');
+  d.className = 'status-msg ' + type;
+  d.innerHTML = '<span style="font-size:18px;margin-right:8px">' + icon + '</span>' + text;
+  document.getElementById('status').appendChild(d);
+  d.scrollIntoView({behavior:'smooth',block:'end'});
+}
+
+let diag = null;
+
+async function startConnect() {
+  const btn = document.getElementById('btn');
+  btn.disabled = true; btn.textContent = '⏳ Connecting...';
+  document.getElementById('status').innerHTML = '';
+  document.getElementById('progress').style.display = 'flex';
+  for (let i=1; i<=4; i++) document.getElementById('s'+i).className = 'step';
+  document.getElementById('s1').className = 'step active';
+
+  try {
+    const res = await fetch('/api/connect', {method:'POST', headers:{'Content-Type':'application/json'}});
+    const d = await res.json();
+
+    if (!d.ok) {
+      let m = 'Connect ব্যর্থ';
+      if (d.state === 'unauthorized') m = '⚠️ ফোনে "Allow USB debugging" popup-এ Allow click করুন';
+      else if (d.state === 'no_device') m = '❌ USB cable connect করুন এবং Developer Options ON করুন';
+      else if (d.message) m = d.message;
+      addStatus('error', '❌', m);
+      document.getElementById('s1').className = 'step done';
+      btn.disabled = false; btn.textContent = '🔌 Connect Now';
+      return;
+    }
+
+    // Auto-fill search box with connected device
+    if (d.device) {
+      document.getElementById('searchBrand').value = d.device.brand || '';
+      document.getElementById('searchModel').value = d.device.model || '';
+    }
+
+    document.getElementById('s1').className = 'step done';
+    document.getElementById('s2').className = 'step active';
+
+    addStatus('success', '🎉', '<b>ওয়েলকাম!</b> আমাদের সিস্টেমের সাথে কানেক্ট করার জন্য ধন্যবাদ।');
+    setTimeout(() => addStatus('warning', '⏳', 'আপনার ডিভাইসটি সফলভাবে কানেক্ট হয়েছে। বিস্তারিত সমস্যার রিপোর্ট পেতে দয়া করে <b>দুই-চার মিনিট অপেক্ষা করুন</b>...'), 800);
+
+    await new Promise(r => setTimeout(r, 1500));
+    document.getElementById('s2').className = 'step done';
+    document.getElementById('s3').className = 'step active';
+
+    const dr = await fetch('/api/full-diagnose', {method:'POST', headers:{'Content-Type':'application/json'}});
+    const dd = await dr.json();
+
+    if (!dd.ok) {
+      addStatus('error', '❌', 'Diagnosis ব্যর্থ: ' + (dd.message || 'Unknown'));
+      btn.disabled = false; btn.textContent = '🔌 Connect Now';
+      return;
+    }
+
+    diag = dd;
+    document.getElementById('s3').className = 'step done';
+    document.getElementById('s4').className = 'step active';
+
+    await new Promise(r => setTimeout(r, 1200));
+    addStatus('success', '✅', '<b>আপনার ডিভাইসের সমস্যার তালিকা তৈরি করা হয়েছে</b>, যা এখন <b>Result tab</b>-এ প্রদর্শিত হচ্ছে।');
+    document.getElementById('s4').className = 'step done';
+
+    setTimeout(() => {
+      document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
+      document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+      document.querySelector('[data-tab="result"]').classList.add('active');
+      document.getElementById('panel-result').classList.add('active');
+      renderResult();
+    }, 2000);
+
+    btn.disabled = false; btn.textContent = '🔄 Re-Connect';
+  } catch (e) {
+    addStatus('error', '❌', 'System error: ' + e.message);
+    btn.disabled = false; btn.textContent = '🔌 Connect Now';
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+// Render Result
+// ═══════════════════════════════════════════════════════════
+function renderResult() {
+  const c = document.getElementById('result');
+  if (!diag || !diag.ok) { c.className = 'empty'; c.innerHTML = '<span class="icon">📊</span><p>কোনো result নেই</p>'; return; }
+  const d = diag.device || {}, dg = diag.diagnosis || {}, pb = diag.problems || [];
+  let h = '<div class="card"><h3>📱 Device Information</h3>';
+  h += '<div class="row-info"><span class="lbl">Brand</span><span class="val">' + (d.brand||'-') + '</span></div>';
+  h += '<div class="row-info"><span class="lbl">Model</span><span class="val">' + (d.model||'-') + '</span></div>';
+  h += '<div class="row-info"><span class="lbl">Chipset</span><span class="val">' + (d.chipset||'-') + '</span></div>';
+  h += '<div class="row-info"><span class="lbl">Android</span><span class="val">' + (d.android||'-') + '</span></div>';
+  h += '<div class="row-info"><span class="lbl">Serial</span><span class="val">' + (d.serial||'-') + '</span></div></div>';
+
+  h += '<h3 style="color:#89b4fa;margin:18px 0 10px;font-size:14px">📋 সমস্যার তালিকা</h3>';
+  pb.forEach(p => {
+    let ic = '✅', cls = 'ok';
+    if (p.status === 'warning') { ic = '⚠️'; cls = 'warn'; }
+    if (p.status === 'error') { ic = '❌'; cls = 'err'; }
+    h += '<div class="prob ' + cls + '"><span class="pico">' + ic + '</span><span class="plbl">' + p.label + '</span><span class="pval">' + p.value + '</span></div>';
+  });
+
+  if (dg.issue_type) {
+    h += '<div class="card" style="margin-top:18px;border-left-color:#cba6f7"><h3 style="color:#cba6f7">🔍 বিস্তারিত</h3>';
+    h += '<p style="color:#cdd6f4;line-height:1.7;font-size:14px"><b>ধরন:</b> ' + dg.issue_type.toUpperCase() + '</p>';
+    h += '<p style="color:#cdd6f4;line-height:1.7;font-size:14px;margin-top:6px"><b>সারমর্ম:</b> ' + (dg.summary||'-') + '</p>';
+    if (dg.sw_actions && dg.sw_actions.length) {
+      h += '<p style="color:#cdd6f4;margin-top:10px"><b>💾 সফটওয়্যার:</b></p><ul style="padding-left:22px;color:#a6adc8;font-size:13px;line-height:1.8">';
+      dg.sw_actions.forEach(a => h += '<li>' + a + '</li>');
+      h += '</ul>';
+    }
+    if (dg.hw_guide && dg.hw_guide.length) {
+      h += '<p style="color:#cdd6f4;margin-top:10px"><b>🔧 হার্ডওয়্যার:</b></p><ul style="padding-left:22px;color:#a6adc8;font-size:13px;line-height:1.8">';
+      dg.hw_guide.forEach(g => h += '<li>' + g + '</li>');
+      h += '</ul>';
+    }
+    h += '</div>';
+  }
+  if (diag.timestamp) h += '<p style="text-align:center;color:#6c7086;font-size:12px;margin-top:15px">Report: ' + diag.timestamp + '</p>';
+
+  c.className = ''; c.innerHTML = h;
+}
+
+// ═══════════════════════════════════════════════════════════
+// History
+// ═══════════════════════════════════════════════════════════ 
+async function loadHistory() {
+  const c = document.getElementById('history');
+  c.innerHTML = '<div class="empty"><span class="icon">⏳</span><p>Loading...</p></div>';
+  try {
+    const res = await fetch('/api/history-full');
+    const d = await res.json();
+    if (!d.ok) { c.innerHTML = '<div class="empty"><span class="icon">❌</span><p>' + d.message + '</p></div>'; return; }
+
+    let h = '<div class="stats">';
+    h += '<div class="stat"><div class="num">' + (d.stats.total_scans||0) + '</div><div class="lbl">Total Scans</div></div>';
+    h += '<div class="stat s"><div class="num">' + (d.stats.fixed||0) + '</div><div class="lbl">✅ Fixed</div></div>';
+    h += '<div class="stat d"><div class="num">' + (d.stats.not_fixed||0) + '</div><div class="lbl">❌ Not Fixed</div></div>';
+    h += '<div class="stat w"><div class="num">' + (d.stats.pending||0) + '</div><div class="lbl">⏳ Pending</div></div>';
+    h += '</div>';
+
+    const u = d.user || {};
+    h += '<div class="ucard"><h3>👤 Your Account</h3><div class="ugrid">';
+    h += '<div><div class="lbl">Email</div><div class="val">' + (u.email||'-') + '</div></div>';
+    h += '<div><div class="lbl">Scans</div><div class="val">' + (u.scans_count||0) + '</div></div>';
+    h += '<div><div class="lbl">Last Login</div><div class="val">' + ((u.last_login||'-').substring(0,19)) + '</div></div>';
+    h += '</div></div>';
+
+    const sc = d.scans || [];
+    if (!sc.length) {
+      h += '<div class="empty"><span class="icon">📭</span><p>কোনো scan নেই</p></div>';
+    } else {
+      h += '<table><tr><th>Time</th><th>Device</th><th>User</th><th>Status</th></tr>';
+      sc.forEach(s => {
+        const dev = (s.brand||'?') + ' ' + (s.model||'?');
+        const u2 = s.technician || '(unknown)';
+        const ts = (s.ts||'').substring(0,19);
+        const nt = (s.notes||'').toLowerCase();
+        let bd = '<span class="badge i">📊 Checked</span>';
+        if (nt.includes('success') || nt.includes('fixed')) bd = '<span class="badge s">✅ Fixed</span>';
+        else if (nt.includes('fail') || nt.includes('not fixed')) bd = '<span class="badge d">❌ Not Fixed</span>';
+        else if (nt.includes('pending')) bd = '<span class="badge w">⏳ Pending</span>';
+        h += '<tr><td>' + ts + '</td><td><b>' + dev + '</b></td><td>' + u2 + '</td><td>' + bd + '</td></tr>';
+      });
+      h += '</table>';
+    }
+    c.innerHTML = h;
+  } catch (e) { c.innerHTML = '<div class="empty"><span class="icon">❌</span><p>' + e.message + '</p></div>'; }
+}    

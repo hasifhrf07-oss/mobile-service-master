@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Login — Mobile Service Master</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: "Nirmala UI", Arial, sans-serif;
+    background: linear-gradient(135deg, #1e1e2e 0%, #181825 100%);
+    color: #e0e0e0;
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+  }
+
+  .login-box {
+    width: 100%;
+    max-width: 420px;
+    background: #1e1e2e;
+    border-radius: 15px;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+    overflow: hidden;
+  }
+
+  .header {
+    background: linear-gradient(135deg, #89b4fa 0%, #cba6f7 100%);
+    padding: 30px;
+    text-align: center;
+    color: #1e1e2e;
+  }
+
+  .header .icon {
+    font-size: 55px;
+    margin-bottom: 10px;
+  }
+
+  .header h1 {
+    font-size: 22px;
+    margin-bottom: 5px;
+  }
+
+  .header p {
+    font-size: 13px;
+    opacity: 0.85;
+  }
+
+  .form-body {
+    padding: 30px;
+  }
+
+  label {
+    display: block;
+    margin-bottom: 6px;
+    color: #a6adc8;
+    font-size: 13px;
+    font-weight: bold;
+  }
+
+  input {
+    width: 100%;
+    background: #11111b;
+    color: #cdd6f4;
+    border: 1px solid #45475a;
+    padding: 12px 14px;
+    border-radius: 8px;
+    font-size: 14px;
+    margin-bottom: 16px;
+    font-family: inherit;
+  }
+
+  input:focus {
+    outline: none;
+    border-color: #89b4fa;
+  }
+
+  button {
+    width: 100%;
+    background: linear-gradient(135deg, #89b4fa 0%, #cba6f7 100%);
+    color: #1e1e2e;
+    border: none;
+    padding: 14px;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: 0.3s;
+    font-family: inherit;
+  }
+
+  button:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 20px rgba(137,180,250,0.4);
+  }
+
+  button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
+  .message {
+    padding: 12px 16px;
+    border-radius: 8px;
+    margin-bottom: 16px;
+    font-size: 14px;
+    line-height: 1.6;
+    display: none;
+  }
+
+  .message.error {
+    background: rgba(243,139,168,0.15);
+    border-left: 3px solid #f38ba8;
+    color: #f38ba8;
+    display: block;
+  }
+
+  .message.success {
+    background: rgba(166,227,161,0.15);
+    border-left: 3px solid #a6e3a1;
+    color: #a6e3a1;
+    display: block;
+  }
+
+  .info {
+    margin-top: 20px;
+    padding: 15px;
+    background: #181825;
+    border-radius: 8px;
+    font-size: 12px;
+    color: #6c7086;
+    line-height: 1.7;
+  }
+
+  .info b { color: #89b4fa; }
+</style>
+</head>
+<body>
+<div class="login-box">
+  <div class="header">
+    <div class="icon">🔧</div>
+    <h1>Mobile Service Master</h1>
+    <p>Professional Diagnostic System</p>
+  </div>
+
+  <div class="form-body">
+    <div id="message" class="message"></div>
+
+    <label>📧 Email Address</label>
+    <input type="email" id="email" placeholder="your@email.com" autocomplete="email">
+
+    <label>🔒 Password</label>
+    <input type="password" id="password" placeholder="••••••••" autocomplete="current-password">
+
+    <button id="btn" onclick="doLogin()">🚀 Login / Register</button>
+
+    <div class="info">
+      <b>প্রথমবার ব্যবহার?</b><br>
+      নতুন account automatic তৈরি হবে।<br>
+      Verification code (OTP) terminal-এ print হবে।
+    </div>
+  </div>
+</div>
+
+<script>
+function showMessage(text, type) {
+  const m = document.getElementById('message');
+  m.className = 'message ' + type;
+  m.textContent = text;
+}
+
+async function doLogin() {
+  const email = document.getElementById('email').value.trim();
+  const password = document.getElementById('password').value;
+
+  if (!email || !password) {
+    showMessage('Email ও Password দিন', 'error');
+    return;
+  }
+
+  const btn = document.getElementById('btn');
+  btn.disabled = true;
+  btn.textContent = '⏳ Verifying...';
+
+  try {
+    const res = await fetch('/login', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({email, password})
+    });
+
+    const data = await res.json();
+
+    if (!data.ok) {
+      showMessage(data.message || 'Login ব্যর্থ', 'error');
+      btn.disabled = false;
+      btn.textContent = '🚀 Login / Register';
+      return;
+    }
+
+    if (data.action === 'dashboard') {
+      showMessage('✅ Login successful!', 'success');
+      setTimeout(() => {
+        window.location.href = '/dashboard';
+      }, 500);
+    } else if (data.action === 'verify') {
+      showMessage('✅ ' + (data.message || 'Verification required'), 'success');
+      setTimeout(() => {
+        window.location.href = '/verify';
+      }, 1500);
+    }
+  } catch (err) {
+    showMessage('Network error: ' + err.message, 'error');
+    btn.disabled = false;
+    btn.textContent = '🚀 Login / Register';
+  }
+}
+
+// Enter key submit
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') doLogin();
+});
+</script>
+</body>
+</html> 
