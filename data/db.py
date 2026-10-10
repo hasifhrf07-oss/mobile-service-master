@@ -334,3 +334,155 @@ def get_scan_history(scan_id=None, limit=100):
                 ORDER BY id DESC LIMIT ?
             """, (limit,)).fetchall()
         return [dict(r) for r in rows]
+    
+
+# ═════════════════════════════════════════════════════════
+# NEW: Meter Jobs (photo analysis)
+# ═════════════════════════════════════════════════════════
+
+def init_meter_tables():
+    """Meter jobs + readings + comments টেবিল তৈরি করো"""
+    with conn() as c:
+        c.executescript("""
+            CREATE TABLE IF NOT EXISTS meter_jobs (
+                id TEXT PRIMARY KEY,
+                user_email TEXT,
+                phone_serial TEXT,
+                brand TEXT,
+                model TEXT,
+                status TEXT DEFAULT 'pending',
+                confidence INTEGER DEFAULT 0,
+                diagnosis_json TEXT,
+                photos_json TEXT,
+                result_json TEXT,
+                created_at TEXT,
+                updated_at TEXT
+            );
+
+            CREATE TABLE IF NOT EXISTS meter_readings (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                job_id TEXT,
+                rail_name TEXT,
+                value REAL,
+                unit TEXT,
+                meter_brand TEXT,
+                meter_model TEXT,
+                accuracy_pct REAL,
+                confidence INTEGER,
+                photo_path TEXT,
+                source TEXT,
+                created_at TEXT
+            );
+
+            CREATE TABLE IF NOT EXISTS comments (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_email TEXT,
+                job_id TEXT,
+                text TEXT,
+                intent TEXT,
+                auto_reply TEXT,
+                needs_review INTEGER DEFAULT 0,
+                admin_action TEXT,
+                created_at TEXT
+            );
+        """)
+
+
+def save_meter_job(job_id, user_email, photos_json, brand=""):
+    import json
+    from datetime import datetime
+    init_meter_tables()
+    now = datetime.now().isoformat(timespec="seconds")
+    with conn() as c:
+        c.execute("""
+            INSERT OR REPLACE INTO meter_jobs
+            (id, user_email, brand, status, photos_json,
+             created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        """, (job_id, user_email, brand, "pending", photos_json, now, now))
+
+
+def update_meter_job(job_id, status=None, confidence=None,
+                     diagnosis_json=None, result_json=None):
+    from datetime import datetime
+    init_meter_tables()
+    fields = []
+    values = []
+    if status:
+        fields.append("status=?"); values.append(status)
+    if confidence is not None:
+        fields.append("confidence=?"); values.append(confidence)
+    if diagnosis_json:
+        fields.append("diagnosis_json=?"); values.append(diagnosis_json)
+    if result_json:
+        fields.append("result_json=?"); values.append(result_json)
+    fields.append("updated_at=?")
+    values.append(datetime.now().isoformat(timespec="seconds"))
+    values.append(job_id)
+
+    with conn() as c:
+        c.execute(f"UPDATE meter_jobs SET {','.join(fields)} WHERE id=?",
+                  values)
+
+
+def get_meter_job(job_id):
+    init_meter_tables()
+    with conn() as c:
+        r = c.execute("SELECT * FROM meter_jobs WHERE id=?",
+                      (job_id,)).fetchone()
+        return dict(r) if r else None
+
+
+def list_meter_jobs(user_email=None, limit=50):
+    init_meter_tables()
+    with conn() as c:
+        if user_email:
+            rows = c.execute("""
+                SELECT * FROM meter_jobs WHERE user_email=?
+                ORDER BY id DESC LIMIT ?
+            """, (user_email, limit)).fetchall()
+        else:
+            rows = c.execute("""
+                SELECT * FROM meter_jobs ORDER BY id DESC LIMIT ?
+            """, (limit,)).fetchall()
+        return [dict(r) for r in rows]
+
+
+def save_comment(user_email, text, intent="", auto_reply="",
+                 needs_review=0, job_id=""):
+    from datetime import datetime
+    init_meter_tables()
+    with conn() as c:
+        c.execute("""
+            INSERT INTO comments
+            (user_email, job_id, text, intent, auto_reply,
+             needs_review, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        """, (user_email, job_id, text, intent, auto_reply,
+              needs_review,
+              datetime.now().isoformat(timespec="seconds")))
+
+
+def list_comments(user_email=None, limit=100):
+    init_meter_tables()
+    with conn() as c:
+        if user_email:
+            rows = c.execute("""
+                SELECT * FROM comments WHERE user_email=?
+                ORDER BY id DESC LIMIT ?
+            """, (user_email, limit)).fetchall()
+        else:
+            rows = c.execute("""
+                SELECT * FROM comments ORDER BY id DESC LIMIT ?
+            """, (limit,)).fetchall()
+        return [dict(r) for r in rows]
+
+
+def list_unmatched_comments(limit=50):
+    init_meter_tables()
+    with conn() as c:
+        rows = c.execute("""
+            SELECT * FROM comments WHERE needs_review=1
+            ORDER BY id DESC LIMIT ?
+        """, (limit,)).fetchall()
+        return [dict(r) for r in rows]
