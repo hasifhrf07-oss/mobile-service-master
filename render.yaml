@@ -1,0 +1,27 @@
+﻿services:
+  - type: web
+    name: mobile-service-master
+    runtime: python
+    plan: free
+    buildCommand: |
+      pip install --upgrade pip
+      pip install -r requirements.txt
+    startCommand: |
+      gunicorn web_app:app --bind 0.0.0.0:$PORT --workers 1 --threads 4 --timeout 300
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.9
+      - key: SECRET_KEY
+        generateValue: true
+      - key: FLASK_ENV
+        value: production
+      - key: ADMIN_EMAIL
+        value: admin.mobile.servicemaster@gmail.com
+      - key: TRIAL_DAYS
+        value: "180"
+      - key: CLIENT_DATA_RETENTION_DAYS
+        value: "30"
+      - key: JOB_ANALYSIS_DELAY_SECONDS
+        value: "420"
+    autoDeploy: true
+    healthCheckPath: /healthz
