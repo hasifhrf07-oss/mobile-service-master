@@ -1,4 +1,4 @@
-# Mobile Service Master - Full Web App (Admin + Encryption + Settings)
+# Mobile Service Master - Full Web App v3.1 (Admin + Encryption + Meter + Comment + Subscription)
 
 from flask import (Flask, render_template, request, jsonify,
                    session, redirect, url_for)
@@ -11,10 +11,13 @@ import hashlib
 import secrets
 import threading
 import time
+import uuid
 from datetime import datetime
+from werkzeug.utils import secure_filename
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
+# ── Existing imports (core modules) ──
 from core.adb_manager import ADBManager
 from core.detector import Detector
 from core.multi_detect import MultiDetector
@@ -22,13 +25,29 @@ from core.analyzer import Analyzer
 from core.clone_checker import CloneChecker
 from core.usb_reader import USBReader
 from core.scanner.board_scanner import BoardScanner
+
+# ── New imports (meter engine, comment engine, subscription) ──
+from core.meter_engine import analyze_meter_photos
+from core.comment_engine import (classify_comment, generate_reply,
+                                  log_comment, needs_admin_review)
+
+# Subscription module (created earlier via PART 2C — if missing, fallback)
+try:
+    from core.subscription import register_trial, check_status as check_sub
+    HAS_SUB = True
+except ImportError:
+    HAS_SUB = False
+    def check_sub(email):
+        return {"status": "unknown", "days_left": -1, "show_warning": False}
+
+# DB
 from data import db
 
 
 app = Flask(__name__)
 
 # ============================================================
-# Security - Session + Encryption
+# Security — Session + Encryption
 # ============================================================
 
 SECRET_FILE = os.path.join(os.path.dirname(__file__), ".secret_key")
@@ -54,6 +73,15 @@ else:
 
 cipher = Fernet(ENC_KEY)
 
+# ── Uploads config ──
+UPLOAD_DIR = os.path.join(os.path.dirname(__file__), "static", "uploads")
+os.makedirs(UPLOAD_DIR, exist_ok=True)
+ALLOWED_EXT = {"png", "jpg", "jpeg", "webp", "bmp"}
+
+
+def _allowed(name):
+    return "." in name and name.rsplit(".", 1)[1].lower() in ALLOWED_EXT
+
 
 # ============================================================
 # User Database
@@ -61,8 +89,8 @@ cipher = Fernet(ENC_KEY)
 
 USERS_FILE = os.path.join(os.path.dirname(__file__), "users.json")
 
-# ADMIN EMAIL - এখানে তোমার email বসাও
-ADMIN_EMAIL = "hanifhrf06@gmail.com"
+# ADMIN EMAIL — can be overridden by env var (for Render deployment)
+ADMIN_EMAIL = os.environ.get("ADMIN_EMAIL", "admin.mobile.servicemaster@gmail.com")
 
 
 def load_users():
@@ -264,12 +292,21 @@ def dashboard():
     users = load_users()
     user = users.get(email, {})
 
+    # Subscription warning
+    sub = {}
+    if HAS_SUB:
+        try:
+            sub = check_sub(email)
+        except Exception:
+            sub = {}
+
     return render_template(
         "dashboard.html",
         email=email,
         login_time=session.get("login_time", ""),
         scans_count=user.get("scans_count", 0),
         is_admin=is_admin(email),
+        subscription=sub,
     )
 
 
@@ -699,6 +736,23 @@ def api_update_check():
 
 
 @app.route("/api/settings/set-update-url", methods=["POST"])
+@admin_required
+def api_set_update_url():
+    try:
+        data = request.json or {}
+        url = (data.get("url") or "").strip()
+
+        if not url or not (url.startswith("http://") or url.startswith("https://")):
+            return jsonify({"ok": False, "message": "Sothik URL dao"})
+
+        from core.updater import set_update_url
+        set_update_url(url)
+
+        return jsonify({"ok": True, "message": "URL save hoyeche"})
+    except Exception as e:
+        return jsonify({"ok": False, "message": str(e)})
+
+
 # ============================================================
 # API - Model Search + Add (Dashboard Search Bar)
 # ============================================================
@@ -706,15 +760,6 @@ def api_update_check():
 @app.route("/api/search-model")
 @login_required
 def api_search_model():
-    """
-    Search by brand + model (from dashboard search bar)
-    Returns: {
-        "ok": True,
-        "found": True/False,
-        "model": {...} or None,
-        "message": "..."
-    }
-    """
     try:
         brand = (request.args.get("brand") or "").strip()
         model = (request.args.get("model") or "").strip()
@@ -722,7 +767,6 @@ def api_search_model():
         if not brand and not model:
             return jsonify({"ok": False, "message": "Brand ya Model likhun"})
 
-        # Exact match first
         if brand and model:
             exact = db.find_device(brand, model)
             if exact:
@@ -733,7 +777,6 @@ def api_search_model():
                     "message": f"✅ {brand} {model} — database-e ache",
                 })
 
-        # Fuzzy search
         query = f"{brand} {model}".strip()
         results = db.search_devices(query, limit=20)
 
@@ -745,7 +788,6 @@ def api_search_model():
                 "message": f"✅ {len(results)} ta match paowa geche",
             })
 
-        # Not found
         return jsonify({
             "ok": True,
             "found": False,
@@ -761,9 +803,6 @@ def api_search_model():
 @app.route("/api/add-model", methods=["POST"])
 @login_required
 def api_add_model():
-    """
-    Auto-add new model to database
-    """
     try:
         data = request.json or {}
         brand = (data.get("brand") or "").strip()
@@ -772,7 +811,6 @@ def api_add_model():
         if not brand or not model:
             return jsonify({"ok": False, "message": "Brand & Model dite hobe"})
 
-        # Check existing
         existing = db.find_device(brand, model)
         if existing:
             return jsonify({
@@ -781,7 +819,6 @@ def api_add_model():
                 "existing": existing,
             })
 
-        # Add with best info we have
         ok = db.add_device(
             brand=brand,
             model=model,
@@ -809,7 +846,6 @@ def api_add_model():
 @app.route("/api/db-stats")
 @login_required
 def api_db_stats():
-    """Total models + brands count"""
     try:
         total = db.total_count()
         clones = db.clone_count()
@@ -820,21 +856,6 @@ def api_db_stats():
             "clones": clones,
             "brands": brands,
         })
-    except Exception as e:
-        return jsonify({"ok": False, "message": str(e)})
-@admin_required
-def api_set_update_url():
-    try:
-        data = request.json or {}
-        url = (data.get("url") or "").strip()
-
-        if not url or not (url.startswith("http://") or url.startswith("https://")):
-            return jsonify({"ok": False, "message": "Sothik URL dao"})
-
-        from core.updater import set_update_url
-        set_update_url(url)
-
-        return jsonify({"ok": True, "message": "URL save hoyeche"})
     except Exception as e:
         return jsonify({"ok": False, "message": str(e)})
 
@@ -864,7 +885,7 @@ def network_info():
 
 
 # ============================================================
-# Health Check
+# Health Check (legacy)
 # ============================================================
 
 @app.route("/health")
@@ -873,6 +894,209 @@ def health():
         "ok": True,
         "status": "running",
         "timestamp": datetime.now().isoformat(),
+    })
+
+
+# ═════════════════════════════════════════════════════════
+# NEW: METER PHOTO UPLOAD & ANALYSIS
+# ═════════════════════════════════════════════════════════
+
+@app.route("/api/upload-meter-photos", methods=["POST"])
+@login_required
+def api_upload_meter_photos():
+    """৪টি ছবি আপলোড + analysis start"""
+    job_id = str(uuid.uuid4())
+    job_folder = os.path.join(UPLOAD_DIR, job_id)
+    os.makedirs(job_folder, exist_ok=True)
+
+    slots = ["analogue_meter", "multimeter", "dc_supply", "extra"]
+    photo_paths = {}
+
+    for slot in slots:
+        file = request.files.get(slot)
+        if file and file.filename and _allowed(file.filename):
+            fname = f"{slot}_{secure_filename(file.filename)}"
+            path = os.path.join(job_folder, fname)
+            file.save(path)
+            photo_paths[slot] = path
+
+    if not photo_paths:
+        return jsonify({"ok": False, "message": "কোনো বৈধ ছবি নেই"}), 400
+
+    # Manual values (optional)
+    manual_values = {}
+    for slot in slots:
+        mv = request.form.get(f"manual_{slot}")
+        if mv:
+            try:
+                manual_values[slot] = float(mv)
+            except ValueError:
+                pass
+
+    # Run analysis
+    analysis = analyze_meter_photos(photo_paths, manual_values)
+    analysis["job_id"] = job_id
+
+    # Save to DB
+    db.save_meter_job(
+        job_id=job_id,
+        user_email=session.get("email"),
+        photos_json=json.dumps(photo_paths),
+        brand=analysis.get("brand", ""),
+    )
+    db.update_meter_job(
+        job_id=job_id,
+        status="done",
+        confidence=analysis.get("overall_confidence", 0),
+        diagnosis_json=json.dumps(analysis.get("diagnosis", {})),
+        result_json=json.dumps(analysis),
+    )
+
+    return jsonify({
+        "ok": True,
+        "job_id": job_id,
+        "brand": analysis.get("brand"),
+        "brand_confidence": analysis.get("brand_confidence"),
+        "overall_confidence": analysis.get("overall_confidence"),
+        "diagnosis": analysis.get("diagnosis"),
+        "readings": analysis.get("readings"),
+        "requires_remeasure": analysis.get("requires_remeasure"),
+        "suggestions": analysis.get("suggestions"),
+        "anomalies": analysis.get("anomalies"),
+    })
+
+
+@app.route("/api/meter-job/<job_id>")
+@login_required
+def api_meter_job(job_id):
+    """Job result fetch"""
+    job = db.get_meter_job(job_id)
+    if not job:
+        return jsonify({"ok": False, "message": "Job পাওয়া যায়নি"}), 404
+
+    result = {}
+    if job.get("result_json"):
+        try:
+            result = json.loads(job["result_json"])
+        except Exception:
+            result = {}
+
+    return jsonify({
+        "ok": True,
+        "job": job,
+        "result": result,
+    })
+
+
+@app.route("/api/meter-jobs")
+@login_required
+def api_meter_jobs():
+    email = session.get("email")
+    jobs = db.list_meter_jobs(user_email=email, limit=50)
+    return jsonify({"ok": True, "jobs": jobs})
+
+
+# ═════════════════════════════════════════════════════════
+# NEW: COMMENTS
+# ═════════════════════════════════════════════════════════
+
+@app.route("/api/comment", methods=["POST"])
+@login_required
+def api_comment():
+    data = request.get_json() or {}
+    text = (data.get("text") or "").strip()
+    job_id = (data.get("job_id") or "").strip()
+
+    if not text:
+        return jsonify({"ok": False, "message": "খালি কমেন্ট"}), 400
+
+    classification = classify_comment(text)
+    reply = generate_reply(classification)
+    review = 1 if needs_admin_review(classification) else 0
+
+    db.save_comment(
+        user_email=session.get("email"),
+        text=text,
+        intent=",".join(classification["intents"]),
+        auto_reply=reply,
+        needs_review=review,
+        job_id=job_id,
+    )
+
+    log_comment({
+        "user": session.get("email"),
+        "text": text,
+        "intents": classification["intents"],
+        "sentiment": classification["sentiment"],
+        "brand": classification.get("brand"),
+    })
+
+    return jsonify({
+        "ok": True,
+        "reply": reply,
+        "intents": classification["intents"],
+        "sentiment": classification["sentiment"],
+        "needs_review": bool(review),
+    })
+
+
+@app.route("/api/comments")
+@login_required
+def api_comments():
+    return jsonify({
+        "ok": True,
+        "comments": db.list_comments(limit=100),
+    })
+
+
+# ═════════════════════════════════════════════════════════
+# NEW: ADMIN — COMMENTS + METER JOBS
+# ═════════════════════════════════════════════════════════
+
+@app.route("/api/admin/comments")
+@admin_required
+def api_admin_comments():
+    return jsonify({
+        "ok": True,
+        "all": db.list_comments(limit=200),
+        "unmatched": db.list_unmatched_comments(limit=50),
+    })
+
+
+@app.route("/api/admin/meter-jobs")
+@admin_required
+def api_admin_meter_jobs():
+    return jsonify({
+        "ok": True,
+        "jobs": db.list_meter_jobs(limit=200),
+    })
+
+
+# ═════════════════════════════════════════════════════════
+# NEW: SUBSCRIPTION
+# ═════════════════════════════════════════════════════════
+
+@app.route("/api/subscription/status")
+@login_required
+def api_subscription_status():
+    email = session.get("email")
+    if not email:
+        return jsonify({"ok": False}), 401
+    status = check_sub(email)
+    return jsonify({"ok": True, "subscription": status})
+
+
+# ═════════════════════════════════════════════════════════
+# NEW: HEALTH CHECK (for UptimeRobot)
+# ═════════════════════════════════════════════════════════
+
+@app.route("/healthz")
+def healthz():
+    return jsonify({
+        "ok": True,
+        "status": "running",
+        "version": "3.1.0",
+        "timestamp": datetime.now().isoformat(timespec="seconds"),
     })
 
 
@@ -903,7 +1127,7 @@ keep_alive_thread.start()
 if __name__ == "__main__":
     print()
     print("=" * 62)
-    print("   Mobile Service Master - Full Web App")
+    print("   Mobile Service Master - Full Web App v3.1")
     print("=" * 62)
     print()
     print(f"   Admin: {ADMIN_EMAIL}")
@@ -914,4 +1138,5 @@ if __name__ == "__main__":
     print("=" * 62)
     print()
 
-    app.run(host="0.0.0.0", port=5000, debug=False, threaded=True)
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port, debug=False, threaded=True)

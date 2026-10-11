@@ -14,7 +14,7 @@ body{font-family:"Nirmala UI",Arial,sans-serif;background:linear-gradient(135deg
 .user .email{font-weight:bold}
 .logout{background:rgba(30,30,46,.3);color:#1e1e2e;border:none;padding:6px 14px;border-radius:15px;cursor:pointer;font-size:12px;font-weight:bold;margin-top:5px;font-family:inherit}
 .tabs{display:flex;background:#181825;border-bottom:2px solid #313244;overflow-x:auto}
-.tab{flex:1;min-width:100px;padding:14px 12px;text-align:center;cursor:pointer;background:#181825;color:#a6adc8;font-size:13px;font-weight:bold;border:none;font-family:inherit}
+.tab{flex:1;min-width:90px;padding:14px 12px;text-align:center;cursor:pointer;background:#181825;color:#a6adc8;font-size:13px;font-weight:bold;border:none;font-family:inherit}
 .tab.active{background:#313244;color:#89b4fa;border-bottom:3px solid #89b4fa}
 .content{padding:22px;min-height:480px}
 .panel{display:none}
@@ -100,7 +100,8 @@ tr:hover td{background:#252536}
 .hhead{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;flex-wrap:wrap;gap:10px}
 .hhead h2{color:#89b4fa;font-size:17px}
 .rbtn{background:#313244;color:#89b4fa;border:1px solid #45475a;padding:8px 14px;border-radius:6px;cursor:pointer;font-size:13px;font-family:inherit}
-@media(max-width:600px){.content{padding:15px}.tab{padding:12px 8px;font-size:11px;min-width:80px}.search-btn,.update-btn{width:100%}table{font-size:11px}th,td{padding:8px 6px}}
+textarea{resize:vertical;font-family:inherit}
+@media(max-width:600px){.content{padding:15px}.tab{padding:12px 8px;font-size:11px;min-width:70px}.search-btn,.update-btn{width:100%}table{font-size:11px}th,td{padding:8px 6px}}
 </style>
 </head>
 <body>
@@ -118,6 +119,7 @@ tr:hover td{background:#252536}
 <div class="tabs">
   <button class="tab active" data-tab="connect">📱 Connect</button>
   <button class="tab" data-tab="result">📊 Result</button>
+  <button class="tab" data-tab="picture">📸 Picture</button>
   <button class="tab" data-tab="history">📜 History</button>
   <button class="tab" data-tab="settings">⚙️ Settings</button>
 </div>
@@ -166,6 +168,57 @@ tr:hover td{background:#252536}
   <div id="result" class="empty"><span class="icon">📊</span><p>এখনো কোনো result নেই</p></div>
 </div>
 
+<!-- PICTURE TAB (Meter Photo Analysis) -->
+<div id="panel-picture" class="panel">
+
+  <!-- Upload Card -->
+  <div class="search-card">
+    <h3>📸 ৪টি Picture আপলোড করুন</h3>
+    <p style="color:#a6adc8;font-size:12px;margin-bottom:14px;">
+      Technician-এর meter reading-এর ছবি দিন। অ্যাপ বিশ্লেষণ করবে।
+    </p>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px;">
+      <div>
+        <label style="color:#a6adc8;font-size:12px;display:block;margin-bottom:6px;">📷 Picture 1</label>
+        <input type="file" id="photo_analogue_meter" accept="image/*" class="search-input" style="padding:10px;">
+      </div>
+      <div>
+        <label style="color:#a6adc8;font-size:12px;display:block;margin-bottom:6px;">📷 Picture 2</label>
+        <input type="file" id="photo_multimeter" accept="image/*" class="search-input" style="padding:10px;">
+      </div>
+      <div>
+        <label style="color:#a6adc8;font-size:12px;display:block;margin-bottom:6px;">📷 Picture 3</label>
+        <input type="file" id="photo_dc_supply" accept="image/*" class="search-input" style="padding:10px;">
+      </div>
+      <div>
+        <label style="color:#a6adc8;font-size:12px;display:block;margin-bottom:6px;">📷 Picture 4 (Optional)</label>
+        <input type="file" id="photo_extra" accept="image/*" class="search-input" style="padding:10px;">
+      </div>
+    </div>
+
+    <button class="search-btn" style="margin-top:16px;width:100%;" onclick="uploadMeterPhotos()">
+      🚀 Upload & Analyze
+    </button>
+  </div>
+
+  <div id="meterStatus" class="status-area"></div>
+  <div id="meterResult"></div>
+
+  <!-- Comment Box -->
+  <div class="card" style="margin-top:20px;">
+    <h3>💬 আপনার মতামত দিন</h3>
+    <textarea id="commentText" class="search-input" style="width:100%;min-height:70px;font-family:inherit;margin-top:8px;" placeholder="কোনো সমস্যা বা পরামর্শ থাকলে লিখুন..."></textarea>
+    <button class="search-btn" style="margin-top:10px;width:100%;" onclick="postComment()">
+      📩 Comment পাঠান
+    </button>
+    <div id="commentReply" style="margin-top:12px;"></div>
+  </div>
+
+  <div id="meterJobsList" style="margin-top:20px;"></div>
+
+</div>
+
 <!-- HISTORY TAB -->
 <div id="panel-history" class="panel">
   <div class="hhead"><h2>📜 Service History</h2><button class="rbtn" onclick="loadHistory()">🔄 Refresh</button></div>
@@ -192,7 +245,15 @@ document.querySelectorAll('.tab').forEach(t => t.addEventListener('click', () =>
   document.getElementById('panel-' + t.dataset.tab).classList.add('active');
   if (t.dataset.tab === 'history') loadHistory();
   if (t.dataset.tab === 'settings') loadSettings();
+  if (t.dataset.tab === 'picture') loadMeterJobs();
 }));
+
+// ═══════════════════════════════════════════════════════════
+// Logout
+// ═══════════════════════════════════════════════════════════
+function logout() {
+  window.location.href = '/logout';
+}
 
 // ═══════════════════════════════════════════════════════════
 // Search Model
@@ -288,7 +349,6 @@ async function addModel() {
 
     if (data.ok) {
       updateBtn.style.display = 'none';
-      // Refresh stats
       loadDbStats();
     }
   } catch (e) {
@@ -350,7 +410,6 @@ async function startConnect() {
       return;
     }
 
-    // Auto-fill search box with connected device
     if (d.device) {
       document.getElementById('searchBrand').value = d.device.brand || '';
       document.getElementById('searchModel').value = d.device.model || '';
@@ -443,7 +502,7 @@ function renderResult() {
 
 // ═══════════════════════════════════════════════════════════
 // History
-// ═══════════════════════════════════════════════════════════ 
+// ═══════════════════════════════════════════════════════════
 async function loadHistory() {
   const c = document.getElementById('history');
   c.innerHTML = '<div class="empty"><span class="icon">⏳</span><p>Loading...</p></div>';
@@ -486,4 +545,184 @@ async function loadHistory() {
     }
     c.innerHTML = h;
   } catch (e) { c.innerHTML = '<div class="empty"><span class="icon">❌</span><p>' + e.message + '</p></div>'; }
-}    
+}
+
+// ═══════════════════════════════════════════════════════════
+// Settings
+// ═══════════════════════════════════════════════════════════
+async function loadSettings() {
+  const c = document.getElementById('settings');
+  c.innerHTML = '<div class="empty"><span class="icon">⏳</span><p>Loading...</p></div>';
+  try {
+    const res = await fetch('/api/settings/info');
+    const d = await res.json();
+    if (!d.ok) { c.innerHTML = '<div class="empty"><span class="icon">❌</span><p>' + d.message + '</p></div>'; return; }
+
+    const db = d.db || {}, sys = d.system || {}, usr = d.user || {};
+    let h = '<div class="card"><h3>📊 Database</h3>';
+    h += '<div class="row-info"><span class="lbl">Total Devices</span><span class="val">' + (db.total_devices||0) + '</span></div>';
+    h += '<div class="row-info"><span class="lbl">Clones</span><span class="val">' + (db.clones||0) + '</span></div>';
+    h += '<div class="row-info"><span class="lbl">DB Version</span><span class="val">' + (db.version||'-') + '</span></div>';
+    h += '<div class="row-info"><span class="lbl">Last Update</span><span class="val">' + ((db.last_update||'-').substring(0,19)) + '</span></div>';
+    h += '</div>';
+
+    h += '<div class="card" style="border-left-color:#cba6f7"><h3 style="color:#cba6f7">💻 System</h3>';
+    h += '<div class="row-info"><span class="lbl">Platform</span><span class="val">' + (sys.platform||'-') + '</span></div>';
+    h += '<div class="row-info"><span class="lbl">Python</span><span class="val">' + (sys.python||'-') + '</span></div>';
+    h += '<div class="row-info"><span class="lbl">Hostname</span><span class="val">' + (sys.hostname||'-') + '</span></div>';
+    h += '<div class="row-info"><span class="lbl">Local IP</span><span class="val">' + (sys.local_ip||'-') + '</span></div>';
+    h += '<div class="row-info"><span class="lbl">Uptime</span><span class="val">' + (sys.uptime||'-') + '</span></div>';
+    h += '</div>';
+
+    h += '<div class="card" style="border-left-color:#a6e3a1"><h3 style="color:#a6e3a1">👤 User</h3>';
+    h += '<div class="row-info"><span class="lbl">Email</span><span class="val">' + (usr.email||'-') + '</span></div>';
+    h += '<div class="row-info"><span class="lbl">Admin</span><span class="val">' + (usr.is_admin ? '✅ Yes' : '❌ No') + '</span></div>';
+    h += '</div>';
+
+    c.innerHTML = h;
+  } catch (e) { c.innerHTML = '<div class="empty"><span class="icon">❌</span><p>' + e.message + '</p></div>'; }
+}
+
+// ═══════════════════════════════════════════════════════════
+// PICTURE TAB — Meter Photo Analysis
+// ═══════════════════════════════════════════════════════════
+async function uploadMeterPhotos() {
+  const fd = new FormData();
+  const slots = ['analogue_meter', 'multimeter', 'dc_supply', 'extra'];
+  let hasFile = false;
+
+  for (const slot of slots) {
+    const input = document.getElementById('photo_' + slot);
+    if (input && input.files && input.files[0]) {
+      fd.append(slot, input.files[0]);
+      hasFile = true;
+    }
+  }
+
+  if (!hasFile) {
+    alert('কমপক্ষে একটা Picture দিন');
+    return;
+  }
+
+  const status = document.getElementById('meterStatus');
+  status.innerHTML = '<div class="status-msg">⏳ আপলোড এবং বিশ্লেষণ চলছে...</div>';
+
+  try {
+    const res = await fetch('/api/upload-meter-photos', {
+      method: 'POST',
+      body: fd
+    });
+    const data = await res.json();
+
+    if (!data.ok) {
+      status.innerHTML = '<div class="status-msg error">❌ ' + (data.message || 'সমস্যা') + '</div>';
+      return;
+    }
+
+    status.innerHTML = '';
+
+    let h = '<div class="card"><h3>🎯 Detect Result</h3>';
+    h += '<div class="row-info"><span class="lbl">Brand</span><span class="val">' + (data.brand || 'Unknown') + '</span></div>';
+    h += '<div class="row-info"><span class="lbl">Brand Confidence</span><span class="val">' + (data.brand_confidence || 0) + '%</span></div>';
+    h += '<div class="row-info"><span class="lbl">Overall Confidence</span><span class="val">' + (data.overall_confidence || 0) + '%</span></div>';
+    h += '</div>';
+
+    if (data.diagnosis) {
+      h += '<div class="card" style="border-left-color:#cba6f7"><h3 style="color:#cba6f7">🔍 Diagnosis</h3>';
+      h += '<p style="color:#cdd6f4;font-size:14px;line-height:1.7"><b>Verdict:</b> ' + data.diagnosis.verdict + '</p>';
+      h += '<p style="color:#cdd6f4;font-size:14px;line-height:1.7;margin-top:6px">' + (data.diagnosis.summary || '') + '</p>';
+      h += '</div>';
+    }
+
+    if (data.readings && data.readings.length) {
+      h += '<h3 style="color:#89b4fa;margin:18px 0 10px;font-size:14px">📊 Readings</h3>';
+      data.readings.forEach(r => {
+        let cls = 'ok', ic = '✅';
+        if (r.severity === 'CRITICAL') { cls = 'err'; ic = '❌'; }
+        else if (r.severity === 'LOW' || r.severity === 'HIGH') { cls = 'warn'; ic = '⚠️'; }
+        h += '<div class="prob ' + cls + '">';
+        h += '<span class="pico">' + ic + '</span>';
+        h += '<span class="plbl">' + (r.rail_label || r.slot || 'Rail') + '</span>';
+        h += '<span class="pval">' + r.value + ' ' + (r.unit || 'V') + '</span>';
+        h += '</div>';
+      });
+    }
+
+    if (data.requires_remeasure && data.suggestions && data.suggestions.length) {
+      h += '<div class="card" style="border-left-color:#f9e2af;margin-top:16px">';
+      h += '<h3 style="color:#f9e2af">⚠️ Re-Measure Suggestions</h3>';
+      h += '<ul style="padding-left:20px;color:#f9e2af;font-size:13px;line-height:1.8">';
+      data.suggestions.forEach(s => h += '<li>' + s + '</li>');
+      h += '</ul></div>';
+    }
+
+    document.getElementById('meterResult').innerHTML = h;
+    loadMeterJobs();
+
+  } catch (e) {
+    status.innerHTML = '<div class="status-msg error">❌ Network error: ' + e.message + '</div>';
+  }
+}
+
+async function loadMeterJobs() {
+  try {
+    const res = await fetch('/api/meter-jobs');
+    const data = await res.json();
+    if (!data.ok || !data.jobs || !data.jobs.length) {
+      document.getElementById('meterJobsList').innerHTML =
+        '<div class="empty"><span class="icon">📭</span><p>এখনো কোনো job নেই</p></div>';
+      return;
+    }
+
+    let h = '<h3 style="color:#89b4fa;margin:22px 0 10px;font-size:14px">📜 Recent Jobs</h3>';
+    h += '<table><tr><th>Time</th><th>Brand</th><th>Status</th><th>Confidence</th></tr>';
+    data.jobs.forEach(j => {
+      h += '<tr>';
+      h += '<td>' + (j.created_at || '').substring(0, 19) + '</td>';
+      h += '<td><b>' + (j.brand || 'Unknown') + '</b></td>';
+      h += '<td>' + (j.status || '-') + '</td>';
+      h += '<td>' + (j.confidence || 0) + '%</td>';
+      h += '</tr>';
+    });
+    h += '</table>';
+    document.getElementById('meterJobsList').innerHTML = h;
+  } catch (e) {}
+}
+
+async function postComment() {
+  const text = document.getElementById('commentText').value.trim();
+  if (!text) {
+    alert('Comment likhun');
+    return;
+  }
+
+  const replyBox = document.getElementById('commentReply');
+  replyBox.innerHTML = '<div class="status-msg">⏳ পাঠানো হচ্ছে...</div>';
+
+  try {
+    const res = await fetch('/api/comment', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({text: text, job_id: ''})
+    });
+    const data = await res.json();
+
+    if (!data.ok) {
+      replyBox.innerHTML = '<div class="status-msg error">❌ ' + (data.message || 'সমস্যা') + '</div>';
+      return;
+    }
+
+    replyBox.innerHTML = '<div class="status-msg success">' +
+                         '✅ <b>Auto Reply:</b><br>' + data.reply + '</div>';
+    document.getElementById('commentText').value = '';
+
+  } catch (e) {
+    replyBox.innerHTML = '<div class="status-msg error">❌ ' + e.message + '</div>';
+  }
+}
+
+// Initial load
+loadDbStats();
+</script>
+</body>
+</html>

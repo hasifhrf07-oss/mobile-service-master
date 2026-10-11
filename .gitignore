@@ -62,3 +62,6 @@ reports/
 # Local test
 test_*.py
 scratch/
+
+users.json
+*.backup
