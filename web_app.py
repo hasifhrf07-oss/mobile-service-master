@@ -26,12 +26,12 @@ from core.clone_checker import CloneChecker
 from core.usb_reader import USBReader
 from core.scanner.board_scanner import BoardScanner
 
-# ── New imports (meter engine, comment engine, subscription) ──
+# ── New imports (meter engine, comment engine) ──
 from core.meter_engine import analyze_meter_photos
 from core.comment_engine import (classify_comment, generate_reply,
                                   log_comment, needs_admin_review)
 
-# Subscription module (created earlier via PART 2C — if missing, fallback)
+# Subscription module
 try:
     from core.subscription import register_trial, check_status as check_sub
     HAS_SUB = True
@@ -43,6 +43,10 @@ except ImportError:
 # DB
 from data import db
 
+
+# ============================================================
+# Flask App
+# ============================================================
 
 app = Flask(__name__)
 
@@ -145,6 +149,23 @@ def admin_required(f):
 
 
 # ============================================================
+# Role Helpers
+# ============================================================
+
+def get_current_role():
+    """Session থেকে current user-এর role"""
+    email = session.get("email")
+    if not email:
+        return None
+    if is_admin(email):
+        return "admin"
+    role_info = db.get_user_role(email)
+    if role_info:
+        return role_info.get("role", "pending")
+    return "pending"
+
+
+# ============================================================
 # Auth Routes
 # ============================================================
 
@@ -185,7 +206,7 @@ def login_page():
         }
         save_users(users)
 
-        # NEW: Register user_role in DB (pending status)
+        # Register user_role in DB (pending status)
         try:
             db.register_user_role(email, role="pending")
             db.log_activity(
@@ -211,21 +232,8 @@ def login_page():
             "message": "New account - OTP terminal-e print hoyeche",
             "dev_otp": otp,
         })
-    
 
-        print()
-        print("=" * 60)
-        print(f"  OTP for {email}: {otp}")
-        print("=" * 60)
-        print()
-
-        return jsonify({
-            "ok": True,
-            "action": "verify",
-            "message": "New account - OTP terminal-e print hoyeche",
-            "dev_otp": otp,
-        })
-
+    # Existing user
     user = users[email]
 
     if user["password_hash"] != hash_password(password):
@@ -240,8 +248,9 @@ def login_page():
         user["last_ip"] = request.remote_addr or "unknown"
         save_users(users)
 
-    return jsonify({"ok": True, "action": "dashboard"})
+        return jsonify({"ok": True, "action": "dashboard"})
 
+    # Existing user but not verified → new OTP
     otp = generate_otp()
     user["otp"] = otp
     user["otp_created"] = datetime.now().isoformat()
@@ -293,7 +302,7 @@ def verify_page():
     user["last_login"] = datetime.now().isoformat()
     save_users(users)
 
-    # NEW: Ensure user_role exists
+    # Ensure user_role exists
     try:
         if not db.get_user_role(email):
             db.register_user_role(email, role="pending")
@@ -321,14 +330,65 @@ def logout():
 
 
 # ============================================================
-# Dashboard
+# Dashboard (v2 primary)
 # ============================================================
+
+@app.route("/dashboard-v2")
+@login_required
+def dashboard_v2():
+    """Role-aware dashboard with decoy tabs"""
+    email = session.get("email", "")
+    users = load_users()
+    user = users.get(email, {})
+
+    role = get_current_role()
+    role_info = db.get_user_role(email) or {}
+
+    sub = {}
+    if HAS_SUB:
+        try:
+            sub = check_sub(email)
+        except Exception:
+            sub = {}
+
+    return render_template(
+        "dashboard_v2.html",
+        email=email,
+        login_time=session.get("login_time", ""),
+        scans_count=user.get("scans_count", 0),
+        is_admin=is_admin(email),
+        role=role,
+        role_status=role_info.get("status", "approved"),
+        subscription=sub,
+    )
+
 
 @app.route("/dashboard")
 @login_required
 def dashboard():
     """Legacy — redirect to v2"""
     return redirect(url_for("dashboard_v2"))
+
+
+@app.route("/me/role")
+@login_required
+def me_role():
+    """Current user role info"""
+    email = session.get("email")
+    role = get_current_role()
+    role_info = db.get_user_role(email) or {}
+    return jsonify({
+        "ok": True,
+        "email": email,
+        "role": role,
+        "status": role_info.get("status", "approved"),
+        "is_admin": is_admin(email),
+    })
+
+
+# ============================================================
+# API - Connect
+# ============================================================
 
 @app.route("/api/connect", methods=["POST"])
 @login_required
@@ -617,7 +677,7 @@ def api_history_full():
 
 
 # ============================================================
-# API - Admin
+# API - Admin (users)
 # ============================================================
 
 @app.route("/api/admin/users")
@@ -770,7 +830,7 @@ def api_set_update_url():
 
 
 # ============================================================
-# API - Model Search + Add (Dashboard Search Bar)
+# API - Model Search + Add
 # ============================================================
 
 @app.route("/api/search-model")
@@ -877,7 +937,7 @@ def api_db_stats():
 
 
 # ============================================================
-# Network Info + QR
+# Network Info
 # ============================================================
 
 @app.route("/network-info")
@@ -913,9 +973,9 @@ def health():
     })
 
 
-# ═════════════════════════════════════════════════════════
-# NEW: METER PHOTO UPLOAD & ANALYSIS
-# ═════════════════════════════════════════════════════════
+# ============================================================
+# METER PHOTO UPLOAD & ANALYSIS
+# ============================================================
 
 @app.route("/api/upload-meter-photos", methods=["POST"])
 @login_required
@@ -1012,9 +1072,9 @@ def api_meter_jobs():
     return jsonify({"ok": True, "jobs": jobs})
 
 
-# ═════════════════════════════════════════════════════════
-# NEW: COMMENTS
-# ═════════════════════════════════════════════════════════
+# ============================================================
+# COMMENTS
+# ============================================================
 
 @app.route("/api/comment", methods=["POST"])
 @login_required
@@ -1065,9 +1125,9 @@ def api_comments():
     })
 
 
-# ═════════════════════════════════════════════════════════
-# NEW: ADMIN — COMMENTS + METER JOBS
-# ═════════════════════════════════════════════════════════
+# ============================================================
+# ADMIN — COMMENTS + METER JOBS
+# ============================================================
 
 @app.route("/api/admin/comments")
 @admin_required
@@ -1085,12 +1145,13 @@ def api_admin_meter_jobs():
     return jsonify({
         "ok": True,
         "jobs": db.list_meter_jobs(limit=200),
-    })
+
+            })
 
 
-# ═════════════════════════════════════════════════════════
-# NEW: SUBSCRIPTION
-# ═════════════════════════════════════════════════════════
+# ============================================================
+# SUBSCRIPTION
+# ============================================================
 
 @app.route("/api/subscription/status")
 @login_required
@@ -1102,9 +1163,9 @@ def api_subscription_status():
     return jsonify({"ok": True, "subscription": status})
 
 
-# ═════════════════════════════════════════════════════════
-# NEW: HEALTH CHECK (for UptimeRobot)
-# ═════════════════════════════════════════════════════════
+# ============================================================
+# HEALTH CHECK (for UptimeRobot)
+# ============================================================
 
 @app.route("/healthz")
 def healthz():
@@ -1117,7 +1178,81 @@ def healthz():
 
 
 # ============================================================
-# Background Task
+# ADMIN — PENDING / APPROVE / REJECT
+# ============================================================
+
+@app.route("/api/admin/pending-users")
+@admin_required
+def api_admin_pending_users():
+    users = db.list_pending_users()
+    return jsonify({"ok": True, "pending": users})
+
+
+@app.route("/api/admin/all-users")
+@admin_required
+def api_admin_all_users():
+    users = db.list_all_users()
+    return jsonify({"ok": True, "users": users})
+
+
+@app.route("/api/admin/approve-user", methods=["POST"])
+@admin_required
+def api_admin_approve_user():
+    data = request.get_json() or {}
+    email = (data.get("email") or "").strip().lower()
+    role = data.get("role", "technician")
+    notes = data.get("notes", "")
+
+    if not email:
+        return jsonify({"ok": False, "message": "Email dorkar"})
+
+    ok = db.approve_user(email, session.get("email"), role)
+
+    if ok:
+        db.log_activity(
+            user_email=email,
+            action="approved",
+            details=f"Role: {role}, by {session.get('email')}",
+            ip=request.remote_addr or "",
+        )
+        return jsonify({"ok": True, "message": f"{email} approved as {role}"})
+
+    return jsonify({"ok": False, "message": "Approve fail"})
+
+
+@app.route("/api/admin/reject-user", methods=["POST"])
+@admin_required
+def api_admin_reject_user():
+    data = request.get_json() or {}
+    email = (data.get("email") or "").strip().lower()
+    reason = data.get("reason", "")
+
+    if not email:
+        return jsonify({"ok": False, "message": "Email dorkar"})
+
+    ok = db.reject_user(email, reason)
+
+    if ok:
+        db.log_activity(
+            user_email=email,
+            action="rejected",
+            details=f"Reason: {reason}",
+            ip=request.remote_addr or "",
+        )
+        return jsonify({"ok": True, "message": f"{email} rejected"})
+
+    return jsonify({"ok": False, "message": "Reject fail"})
+
+
+@app.route("/api/admin/activity")
+@admin_required
+def api_admin_activity():
+    logs = db.get_recent_activity(limit=100)
+    return jsonify({"ok": True, "activity": logs})
+
+
+# ============================================================
+# AUTO-APPROVE SCHEDULER
 # ============================================================
 
 START_TIME = time.time()
@@ -1126,14 +1261,66 @@ START_TIME = time.time()
 def keep_alive_task():
     while True:
         time.sleep(3600)
-        try:
-            pass
-        except Exception:
-            pass
 
 
 keep_alive_thread = threading.Thread(target=keep_alive_task, daemon=True)
 keep_alive_thread.start()
+
+
+try:
+    from apscheduler.schedulers.background import BackgroundScheduler
+    from scripts.auto_approve import auto_approve_pending
+    HAS_SCHEDULER = True
+except ImportError:
+    HAS_SCHEDULER = False
+    print("[WARN] APScheduler not installed — auto-approve disabled")
+
+
+def _run_auto_approve():
+    try:
+        result = auto_approve_pending()
+        if result.get("approved", 0) > 0:
+            print(f"[AUTO-APPROVE] {result['approved']} users approved")
+    except Exception as e:
+        print(f"[AUTO-APPROVE ERROR] {e}")
+
+
+if HAS_SCHEDULER and not app.config.get("SCHEDULER_STARTED"):
+    try:
+        _scheduler = BackgroundScheduler(daemon=True)
+        _scheduler.add_job(
+            _run_auto_approve,
+            "interval",
+            hours=1,
+            id="auto_approve_job",
+            replace_existing=True,
+        )
+        _scheduler.add_job(
+            _run_auto_approve,
+            "date",
+            run_date=datetime.now(),
+            id="auto_approve_startup",
+        )
+        _scheduler.start()
+        app.config["SCHEDULER_STARTED"] = True
+        print("[SCHEDULER] Auto-approve job started (every 1 hour)")
+    except Exception as e:
+        print(f"[SCHEDULER ERROR] {e}")
+
+
+@app.route("/api/admin/auto-approve-stats")
+@admin_required
+def api_auto_approve_stats():
+    from scripts.auto_approve import stats
+    return jsonify({"ok": True, **stats()})
+
+
+@app.route("/api/admin/auto-approve-now", methods=["POST"])
+@admin_required
+def api_auto_approve_now():
+    from scripts.auto_approve import auto_approve_pending
+    result = auto_approve_pending()
+    return jsonify(result)
 
 
 # ============================================================
@@ -1156,131 +1343,3 @@ if __name__ == "__main__":
 
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port, debug=False, threaded=True)
-
-
-
-# ═════════════════════════════════════════════════════════
-# DAY 1: AUTO-APPROVE SCHEDULER
-# ═════════════════════════════════════════════════════════
-
-# APScheduler (optional — না থাকলে skip)
-try:
-    from apscheduler.schedulers.background import BackgroundScheduler
-    from scripts.auto_approve import auto_approve_pending
-    HAS_SCHEDULER = True
-except ImportError:
-    HAS_SCHEDULER = False
-    print("[WARN] APScheduler not installed — auto-approve disabled")
-
-
-def _run_auto_approve():
-    """Background job — 24h পরে pending user approve"""
-    try:
-        result = auto_approve_pending()
-        if result.get("approved", 0) > 0:
-            print(f"[AUTO-APPROVE] {result['approved']} users approved")
-    except Exception as e:
-        print(f"[AUTO-APPROVE ERROR] {e}")
-
-
-# Start scheduler (shudhu ekbar)
-if HAS_SCHEDULER and not app.config.get("SCHEDULER_STARTED"):
-    try:
-        _scheduler = BackgroundScheduler(daemon=True)
-        # প্রতি ঘন্টায় একবার চেক করো
-        _scheduler.add_job(
-            _run_auto_approve,
-            "interval",
-            hours=1,
-            id="auto_approve_job",
-            replace_existing=True,
-        )
-        # Startup-এ একবার run করো
-        _scheduler.add_job(
-            _run_auto_approve,
-            "date",
-            run_date=datetime.now(),
-            id="auto_approve_startup",
-        )
-        _scheduler.start()
-        app.config["SCHEDULER_STARTED"] = True
-        print("[SCHEDULER] Auto-approve job started (every 1 hour)")
-    except Exception as e:
-        print(f"[SCHEDULER ERROR] {e}")
-
-
-# ═════════════════════════════════════════════════════════
-# AUTO-APPROVE ADMIN API
-# ═════════════════════════════════════════════════════════
-
-@app.route("/api/admin/auto-approve-stats")
-@admin_required
-def api_auto_approve_stats():
-    """Auto-approve system stats"""
-    from scripts.auto_approve import stats
-    return jsonify({"ok": True, **stats()})
-
-
-@app.route("/api/admin/auto-approve-now", methods=["POST"])
-@admin_required
-def api_auto_approve_now():
-    """Manual trigger — এখনই pending approve করো"""
-    from scripts.auto_approve import auto_approve_pending
-    result = auto_approve_pending()
-    return jsonify(result)
-
-def get_current_role():
-    """Session থেকে current user-এর role"""
-    email = session.get("email")
-    if not email:
-        return None
-    if is_admin(email):
-        return "admin"
-    role_info = db.get_user_role(email)
-    if role_info:
-        return role_info.get("role", "pending")
-    return "pending"
-
-@app.route("/dashboard-v2")
-@login_required
-def dashboard_v2():
-    """Role-aware dashboard with decoy tabs"""
-    email = session.get("email", "")
-    users = load_users()
-    user = users.get(email, {})
-
-    role = get_current_role()
-    role_info = db.get_user_role(email) or {}
-
-    sub = {}
-    if HAS_SUB:
-        try:
-            sub = check_sub(email)
-        except Exception:
-            sub = {}
-
-    return render_template(
-        "dashboard_v2.html",
-        email=email,
-        login_time=session.get("login_time", ""),
-        scans_count=user.get("scans_count", 0),
-        is_admin=is_admin(email),
-        role=role,
-        role_status=role_info.get("status", "approved"),
-        subscription=sub,
-    )
-
-
-@app.route("/me/role")
-@login_required
-def me_role():
-    email = session.get("email")
-    role = get_current_role()
-    role_info = db.get_user_role(email) or {}
-    return jsonify({
-        "ok": True,
-        "email": email,
-        "role": role,
-        "status": role_info.get("status", "approved"),
-        "is_admin": is_admin(email),
-    })
