@@ -486,3 +486,145 @@ def list_unmatched_comments(limit=50):
             ORDER BY id DESC LIMIT ?
         """, (limit,)).fetchall()
         return [dict(r) for r in rows]
+
+    
+
+# ═════════════════════════════════════════════════════════
+# USER ROLES & APPROVAL SYSTEM
+# ═════════════════════════════════════════════════════════
+
+def init_user_tables():
+    """User roles + approval টেবিল তৈরি করো"""
+    with conn() as c:
+        c.executescript("""
+            CREATE TABLE IF NOT EXISTS user_roles (
+                email TEXT PRIMARY KEY,
+                role TEXT DEFAULT 'pending',
+                status TEXT DEFAULT 'pending',
+                approved_by TEXT,
+                approved_at TEXT,
+                rejected_reason TEXT,
+                notes TEXT,
+                created_at TEXT,
+                updated_at TEXT
+            );
+
+            CREATE TABLE IF NOT EXISTS user_activity (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_email TEXT,
+                action TEXT,
+                details TEXT,
+                ip_address TEXT,
+                created_at TEXT
+            );
+        """)
+
+
+def register_user_role(email, role="pending"):
+    """নতুন user role টেবিলে যোগ করো"""
+    from datetime import datetime
+    init_user_tables()
+    now = datetime.now().isoformat(timespec="seconds")
+    with conn() as c:
+        c.execute("""
+            INSERT OR IGNORE INTO user_roles
+            (email, role, status, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?)
+        """, (email.lower(), role, "pending", now, now))
+
+
+def get_user_role(email):
+    """User-এর role + status দেখো"""
+    init_user_tables()
+    with conn() as c:
+        r = c.execute(
+            "SELECT * FROM user_roles WHERE email=?",
+            (email.lower(),)
+        ).fetchone()
+        return dict(r) if r else None
+
+
+def list_pending_users():
+    """যাদের approve করা লাগবে"""
+    init_user_tables()
+    with conn() as c:
+        rows = c.execute("""
+            SELECT * FROM user_roles
+            WHERE status='pending'
+            ORDER BY created_at DESC
+        """).fetchall()
+        return [dict(r) for r in rows]
+
+
+def list_all_users():
+    """সব user"""
+    init_user_tables()
+    with conn() as c:
+        rows = c.execute("""
+            SELECT * FROM user_roles
+            ORDER BY created_at DESC
+        """).fetchall()
+        return [dict(r) for r in rows]
+
+
+def approve_user(email, approver_email, role="technician"):
+    """Admin user-কে approve করল"""
+    from datetime import datetime
+    init_user_tables()
+    with conn() as c:
+        c.execute("""
+            UPDATE user_roles
+            SET role=?, status='approved',
+                approved_by=?, approved_at=?, updated_at=?
+            WHERE email=?
+        """, (
+            role,
+            approver_email,
+            datetime.now().isoformat(timespec="seconds"),
+            datetime.now().isoformat(timespec="seconds"),
+            email.lower()
+        ))
+        return c.total_changes > 0
+
+
+def reject_user(email, reason=""):
+    """Admin user-কে reject করল"""
+    from datetime import datetime
+    init_user_tables()
+    with conn() as c:
+        c.execute("""
+            UPDATE user_roles
+            SET status='rejected', rejected_reason=?, updated_at=?
+            WHERE email=?
+        """, (
+            reason,
+            datetime.now().isoformat(timespec="seconds"),
+            email.lower()
+        ))
+        return c.total_changes > 0
+
+
+def log_activity(user_email, action, details="", ip=""):
+    """User activity log"""
+    from datetime import datetime
+    init_user_tables()
+    with conn() as c:
+        c.execute("""
+            INSERT INTO user_activity
+            (user_email, action, details, ip_address, created_at)
+            VALUES (?, ?, ?, ?, ?)
+        """, (
+            user_email, action, details, ip,
+            datetime.now().isoformat(timespec="seconds")
+        ))
+
+
+def get_recent_activity(limit=100):
+    """সাম্প্রতিক activity"""
+    init_user_tables()
+    with conn() as c:
+        rows = c.execute("""
+            SELECT * FROM user_activity
+            ORDER BY id DESC LIMIT ?
+        """, (limit,)).fetchall()
+        return [dict(r) for r in rows]

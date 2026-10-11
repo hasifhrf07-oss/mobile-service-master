@@ -1,4 +1,4 @@
-# Mobile Service Master - Full Web App v3.1 (Admin + Encryption + Meter + Comment + Subscription)
+﻿# Mobile Service Master - Full Web App v3.1 (Admin + Encryption + Meter + Comment + Subscription)
 
 from flask import (Flask, render_template, request, jsonify,
                    session, redirect, url_for)
@@ -151,7 +151,7 @@ def admin_required(f):
 @app.route("/")
 def index():
     if session.get("logged_in"):
-        return redirect(url_for("dashboard"))
+        return redirect(url_for("dashboard_v2"))
     return redirect(url_for("login_page"))
 
 
@@ -185,7 +185,33 @@ def login_page():
         }
         save_users(users)
 
+        # NEW: Register user_role in DB (pending status)
+        try:
+            db.register_user_role(email, role="pending")
+            db.log_activity(
+                user_email=email,
+                action="registered",
+                details="New user registered (pending approval)",
+                ip=request.remote_addr or "unknown",
+            )
+        except Exception as e:
+            print(f"[ROLE REGISTER ERROR] {e}")
+
         session["pending_email"] = email
+
+        print()
+        print("=" * 60)
+        print(f"  OTP for {email}: {otp}")
+        print("=" * 60)
+        print()
+
+        return jsonify({
+            "ok": True,
+            "action": "verify",
+            "message": "New account - OTP terminal-e print hoyeche",
+            "dev_otp": otp,
+        })
+    
 
         print()
         print("=" * 60)
@@ -214,7 +240,7 @@ def login_page():
         user["last_ip"] = request.remote_addr or "unknown"
         save_users(users)
 
-        return jsonify({"ok": True, "action": "dashboard"})
+    return jsonify({"ok": True, "action": "dashboard"})
 
     otp = generate_otp()
     user["otp"] = otp
@@ -267,6 +293,19 @@ def verify_page():
     user["last_login"] = datetime.now().isoformat()
     save_users(users)
 
+    # NEW: Ensure user_role exists
+    try:
+        if not db.get_user_role(email):
+            db.register_user_role(email, role="pending")
+        db.log_activity(
+            user_email=email,
+            action="verified",
+            details="OTP verified successfully",
+            ip=request.remote_addr or "unknown",
+        )
+    except Exception as e:
+        print(f"[ROLE VERIFY ERROR] {e}")
+
     session["logged_in"] = True
     session["email"] = email
     session["login_time"] = datetime.now().isoformat()
@@ -288,31 +327,8 @@ def logout():
 @app.route("/dashboard")
 @login_required
 def dashboard():
-    email = session.get("email", "")
-    users = load_users()
-    user = users.get(email, {})
-
-    # Subscription warning
-    sub = {}
-    if HAS_SUB:
-        try:
-            sub = check_sub(email)
-        except Exception:
-            sub = {}
-
-    return render_template(
-        "dashboard.html",
-        email=email,
-        login_time=session.get("login_time", ""),
-        scans_count=user.get("scans_count", 0),
-        is_admin=is_admin(email),
-        subscription=sub,
-    )
-
-
-# ============================================================
-# API - Connect
-# ============================================================
+    """Legacy — redirect to v2"""
+    return redirect(url_for("dashboard_v2"))
 
 @app.route("/api/connect", methods=["POST"])
 @login_required
@@ -1140,3 +1156,131 @@ if __name__ == "__main__":
 
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port, debug=False, threaded=True)
+
+
+
+# ═════════════════════════════════════════════════════════
+# DAY 1: AUTO-APPROVE SCHEDULER
+# ═════════════════════════════════════════════════════════
+
+# APScheduler (optional — না থাকলে skip)
+try:
+    from apscheduler.schedulers.background import BackgroundScheduler
+    from scripts.auto_approve import auto_approve_pending
+    HAS_SCHEDULER = True
+except ImportError:
+    HAS_SCHEDULER = False
+    print("[WARN] APScheduler not installed — auto-approve disabled")
+
+
+def _run_auto_approve():
+    """Background job — 24h পরে pending user approve"""
+    try:
+        result = auto_approve_pending()
+        if result.get("approved", 0) > 0:
+            print(f"[AUTO-APPROVE] {result['approved']} users approved")
+    except Exception as e:
+        print(f"[AUTO-APPROVE ERROR] {e}")
+
+
+# Start scheduler (shudhu ekbar)
+if HAS_SCHEDULER and not app.config.get("SCHEDULER_STARTED"):
+    try:
+        _scheduler = BackgroundScheduler(daemon=True)
+        # প্রতি ঘন্টায় একবার চেক করো
+        _scheduler.add_job(
+            _run_auto_approve,
+            "interval",
+            hours=1,
+            id="auto_approve_job",
+            replace_existing=True,
+        )
+        # Startup-এ একবার run করো
+        _scheduler.add_job(
+            _run_auto_approve,
+            "date",
+            run_date=datetime.now(),
+            id="auto_approve_startup",
+        )
+        _scheduler.start()
+        app.config["SCHEDULER_STARTED"] = True
+        print("[SCHEDULER] Auto-approve job started (every 1 hour)")
+    except Exception as e:
+        print(f"[SCHEDULER ERROR] {e}")
+
+
+# ═════════════════════════════════════════════════════════
+# AUTO-APPROVE ADMIN API
+# ═════════════════════════════════════════════════════════
+
+@app.route("/api/admin/auto-approve-stats")
+@admin_required
+def api_auto_approve_stats():
+    """Auto-approve system stats"""
+    from scripts.auto_approve import stats
+    return jsonify({"ok": True, **stats()})
+
+
+@app.route("/api/admin/auto-approve-now", methods=["POST"])
+@admin_required
+def api_auto_approve_now():
+    """Manual trigger — এখনই pending approve করো"""
+    from scripts.auto_approve import auto_approve_pending
+    result = auto_approve_pending()
+    return jsonify(result)
+
+def get_current_role():
+    """Session থেকে current user-এর role"""
+    email = session.get("email")
+    if not email:
+        return None
+    if is_admin(email):
+        return "admin"
+    role_info = db.get_user_role(email)
+    if role_info:
+        return role_info.get("role", "pending")
+    return "pending"
+
+@app.route("/dashboard-v2")
+@login_required
+def dashboard_v2():
+    """Role-aware dashboard with decoy tabs"""
+    email = session.get("email", "")
+    users = load_users()
+    user = users.get(email, {})
+
+    role = get_current_role()
+    role_info = db.get_user_role(email) or {}
+
+    sub = {}
+    if HAS_SUB:
+        try:
+            sub = check_sub(email)
+        except Exception:
+            sub = {}
+
+    return render_template(
+        "dashboard_v2.html",
+        email=email,
+        login_time=session.get("login_time", ""),
+        scans_count=user.get("scans_count", 0),
+        is_admin=is_admin(email),
+        role=role,
+        role_status=role_info.get("status", "approved"),
+        subscription=sub,
+    )
+
+
+@app.route("/me/role")
+@login_required
+def me_role():
+    email = session.get("email")
+    role = get_current_role()
+    role_info = db.get_user_role(email) or {}
+    return jsonify({
+        "ok": True,
+        "email": email,
+        "role": role,
+        "status": role_info.get("status", "approved"),
+        "is_admin": is_admin(email),
+    })
