@@ -1,0 +1,100 @@
+﻿# -*- mode: python ; coding: utf-8 -*-
+
+import os
+from PyInstaller.utils.hooks import collect_all
+
+# Collect dependencies
+datas = []
+binaries = []
+hiddenimports = [
+    "web_app",
+    "data.db",
+    "core.subscription",
+    "core.privacy_manager",
+    "core.meter_engine",
+    "core.comment_engine",
+    "core.adb_manager",
+    "core.detector",
+    "core.multi_detect",
+    "core.analyzer",
+    "core.clone_checker",
+    "core.usb_reader",
+    "core.scanner.board_scanner",
+    "apscheduler",
+    "apscheduler.schedulers",
+    "apscheduler.schedulers.background",
+    "flask",
+    "cryptography",
+    "werkzeug",
+    "jinja2",
+]
+
+# Auto-collect key packages
+for pkg in ["flask", "cryptography", "jinja2", "apscheduler", "werkzeug"]:
+    try:
+        d, b, h = collect_all(pkg)
+        datas += d
+        binaries += b
+        hiddenimports += h
+    except Exception as e:
+        print(f"Skip {pkg}: {e}")
+
+# Add templates + static + data
+datas += [
+    ("templates", "templates"),
+    ("static", "static"),
+    ("data", "data"),
+    ("core", "core"),
+    ("scripts", "scripts"),
+]
+
+# Optional files
+for f in ["version.json", "VERSION", "render.yaml", "requirements.txt", "runtime.txt", "README.md"]:
+    if os.path.exists(f):
+        datas.append((f, "."))
+
+# Optional folders
+for d in ["database", "logs", "guides"]:
+    if os.path.exists(d):
+        datas.append((d, d))
+
+block_cipher = None
+
+a = Analysis(
+    ["launcher_admin.py"],
+    pathex=[],
+    binaries=binaries,
+    datas=datas,
+    hiddenimports=hiddenimports,
+    hookspath=[],
+    hooksconfig={},
+    runtime_hooks=[],
+    excludes=["tkinter", "matplotlib", "numpy", "pandas", "PyQt5", "PyQt6"],
+    win_no_prefer_redirects=False,
+    win_private_assemblies=False,
+    cipher=block_cipher,
+    noarchive=False,
+)
+
+pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
+
+exe = EXE(
+    pyz,
+    a.scripts,
+    a.binaries,
+    a.zipfiles,
+    a.datas,
+    [],
+    name="MobileServiceMaster_Admin",
+    debug=False,
+    bootloader_ignore_signals=False,
+    strip=False,
+    upx=True,
+    upx_exclude=[],
+    runtime_tmpdir=None,
+    console=True,
+    disable_windowed_traceback=False,
+    target_arch=None,
+    codesign_identity=None,
+    entitlements_file=None,
+)

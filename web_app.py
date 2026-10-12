@@ -1327,6 +1327,98 @@ def api_auto_approve_now():
 # Run
 # ============================================================
 
+
+
+# ═════════════════════════════════════════════════════════
+# API — Version Check (Update System)
+# ═════════════════════════════════════════════════════════
+
+@app.route("/api/version/check")
+@login_required
+def api_version_check():
+    """Update system version check"""
+    import json as _json
+    current = "3.1.0"
+    latest = current
+    notes = ""
+    update_available = False
+    try:
+        vf = os.path.join(os.path.dirname(__file__), "version.json")
+        if os.path.exists(vf):
+            vdata = _json.load(open(vf, "r", encoding="utf-8"))
+            latest = vdata.get("current", current)
+            history = vdata.get("history", [])
+            if history:
+                notes = history[-1].get("note", "")
+            update_available = latest != current
+    except Exception as e:
+        print(f"[VERSION CHECK] {e}")
+
+    return jsonify({
+        "ok": True,
+        "current": current,
+        "latest": latest,
+        "update_available": update_available,
+        "notes": notes,
+        "checked_at": datetime.now().isoformat(timespec="seconds"),
+    })
+
+
+
+# ═════════════════════════════════════════════════════════
+# API — Personal Stats (Client Dashboard)
+# ═════════════════════════════════════════════════════════
+
+@app.route("/api/me/stats")
+@login_required
+def api_me_stats():
+    """Technician-এর personal stats"""
+    email = session.get("email")
+    if not email:
+        return jsonify({"ok": False, "message": "Not logged in"}), 401
+
+    try:
+        # Meter jobs
+        jobs = db.list_meter_jobs(user_email=email, limit=1000)
+        total_jobs = len(jobs)
+        done_jobs = len([j for j in jobs if j.get("status") == "done"])
+
+        # Avg confidence
+        confs = [j.get("confidence", 0) for j in jobs if j.get("confidence")]
+        avg_conf = round(sum(confs) / len(confs), 1) if confs else 0
+
+        # Total scans from users
+        users = load_users()
+        user_data = users.get(email, {})
+        scans_count = user_data.get("scans_count", 0)
+
+        # Role info
+        role_info = db.get_user_role(email) or {}
+
+        # Subscription
+        sub = {}
+        if HAS_SUB:
+            try:
+                sub = check_sub(email)
+            except Exception:
+                sub = {}
+
+        return jsonify({
+            "ok": True,
+            "email": email,
+            "is_admin": is_admin(email),
+            "role": get_current_role(),
+            "role_status": role_info.get("status", "approved"),
+            "stats": {
+                "total_jobs": total_jobs,
+                "done_jobs": done_jobs,
+                "avg_confidence": avg_conf,
+                "total_scans": scans_count,
+            },
+            "subscription": sub,
+        })
+    except Exception as e:
+        return jsonify({"ok": False, "message": str(e)}), 500
 if __name__ == "__main__":
     print()
     print("=" * 62)
