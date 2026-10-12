@@ -5,5 +5,12 @@
     "started_at": "2026-10-12T20:29:08",
     "expires_at": "2027-04-10T20:29:08",
     "warning_shown": false
+  },
+  "hasifhrf07@gmail.com": {
+    "email": "hasifhrf07@gmail.com",
+    "plan": "trial",
+    "started_at": "2026-10-13T01:24:27",
+    "expires_at": "2027-04-11T01:24:27",
+    "warning_shown": false
   }
 }

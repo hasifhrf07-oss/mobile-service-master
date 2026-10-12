@@ -165,6 +165,25 @@ textarea:focus{outline:none;border-color:#89b4fa}
 .me-panel .me-item{padding:12px;background:#181825;border-radius:8px;text-align:center}
 .me-panel .me-item .num{font-size:24px;font-weight:bold;color:#89b4fa;display:block}
 .me-panel .me-item .lbl{font-size:11px;color:#a6adc8;text-transform:uppercase;margin-top:4px}
+
+/* SEO Panel */
+.seo-panel{padding:20px;margin-bottom:16px;background:linear-gradient(135deg,rgba(137,180,250,.08),rgba(203,166,247,.08));border-radius:12px;border-left:4px solid #cba6f7}
+.seo-panel h3{color:#cba6f7;font-size:14px;margin-bottom:14px;text-transform:uppercase;letter-spacing:1px}
+.seo-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:12px;margin-bottom:18px}
+.seo-stat{background:#181825;padding:14px;border-radius:8px;text-align:center;border-left:3px solid #89b4fa}
+.seo-stat .num{font-size:22px;font-weight:bold;color:#89b4fa;display:block}
+.seo-stat .lbl{font-size:10px;color:#a6adc8;text-transform:uppercase;margin-top:4px;letter-spacing:.5px}
+.seo-stat.green{border-left-color:#a6e3a1}.seo-stat.green .num{color:#a6e3a1}
+.seo-stat.purple{border-left-color:#cba6f7}.seo-stat.purple .num{color:#cba6f7}
+.seo-stat.yellow{border-left-color:#f9e2af}.seo-stat.yellow .num{color:#f9e2af}
+.seo-brands{margin-top:16px}
+.seo-brands h4{color:#89b4fa;font-size:12px;margin-bottom:8px;text-transform:uppercase;letter-spacing:1px}
+.seo-brand-tags{display:flex;flex-wrap:wrap;gap:6px}
+.seo-brand-tag{background:#181825;color:#cdd6f4;padding:5px 12px;border-radius:20px;font-size:11px;border:1px solid #313244;cursor:default}
+.seo-brand-tag:hover{border-color:#89b4fa;color:#89b4fa}
+.seo-keywords{margin-top:16px;padding:12px;background:#11111b;border-radius:8px;font-size:11px;color:#6c7086;line-height:1.7;font-family:monospace}
+.seo-copy-btn{background:#313244;color:#89b4fa;border:1px solid #45475a;padding:6px 14px;border-radius:6px;cursor:pointer;font-size:11px;font-family:inherit;margin-top:10px}
+.seo-copy-btn:hover{background:#45475a}
 </style>
 </head>
 <body>
@@ -1017,6 +1036,35 @@ async function loadPersonalStats() {
 }
 
 loadPersonalStats();
+
+// ═══════════════════════════════════════════════════════════
+// SEO STATS LOADER
+// ═══════════════════════════════════════════════════════════
+async function loadSEOStats() {
+  try {
+    const res = await fetch('/api/db-stats');
+    const d = await res.json();
+    if (!d.ok) return;
+
+    const total = d.total_models || 0;
+    const clones = d.clones || 0;
+    const brands = (d.brands || []).length;
+
+    document.getElementById('seoModels').textContent = total.toLocaleString();
+    document.getElementById('seoBrands').textContent = brands;
+    document.getElementById('seoClones').textContent = clones;
+  } catch (e) {
+    console.log('[SEO] Error:', e);
+  }
+}
+
+function copyKeywords() {
+  const keywords = 'mobile repair software, technician app, samsung repair, xiaomi repair, mobile diagnostic tool, 10000 mobile models, phone repair database, mobile service master, technician dashboard, IMEI checker, clone detector, ADB tool, fastboot tool, mobile hardware diagnosis';
+  navigator.clipboard.writeText(keywords);
+  alert('✅ SEO keywords copied!\n\nPaste in your website meta tags.');
+}
+
+loadSEOStats();
 </script>
 </body>
 </html>
