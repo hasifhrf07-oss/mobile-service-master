@@ -1,1 +1,1 @@
-﻿"""Utility scripts — backup, cleanup, health check"""
+﻿# Scripts package

@@ -184,6 +184,33 @@ textarea:focus{outline:none;border-color:#89b4fa}
 .seo-keywords{margin-top:16px;padding:12px;background:#11111b;border-radius:8px;font-size:11px;color:#6c7086;line-height:1.7;font-family:monospace}
 .seo-copy-btn{background:#313244;color:#89b4fa;border:1px solid #45475a;padding:6px 14px;border-radius:6px;cursor:pointer;font-size:11px;font-family:inherit;margin-top:10px}
 .seo-copy-btn:hover{background:#45475a}
+
+/* Auto Connect Panel */
+.ac-panel{padding:18px;background:linear-gradient(135deg,rgba(166,227,161,.12),rgba(137,180,250,.12));border-radius:12px;margin-top:16px;border-left:4px solid #a6e3a1;display:none}
+.ac-panel.active{display:block}
+.ac-panel h3{color:#a6e3a1;font-size:14px;margin-bottom:12px;text-transform:uppercase;letter-spacing:1px}
+.ac-actions{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+.ac-btn{background:linear-gradient(135deg,#a6e3a1,#89b4fa);color:#1e1e2e;border:none;padding:12px 24px;border-radius:10px;font-size:14px;font-weight:bold;cursor:pointer;font-family:inherit;flex:1;min-width:180px;box-shadow:0 6px 18px rgba(166,227,161,.25)}
+.ac-btn:hover{opacity:.92;transform:translateY(-2px)}
+.ac-btn.secondary{background:#313244;color:#a6e3a1;border:1px solid #a6e3a1}
+.ac-btn.danger{background:#f38ba8;color:#1e1e2e}
+.ac-result{background:#181825;border-radius:10px;padding:16px;margin-top:12px;display:none}
+.ac-result.active{display:block}
+.ac-status{display:flex;align-items:center;gap:12px;padding:14px;border-radius:10px;margin-bottom:12px}
+.ac-status.connected{background:rgba(166,227,161,.2);border-left:4px solid #a6e3a1}
+.ac-status.failed{background:rgba(243,139,168,.2);border-left:4px solid #f38ba8}
+.ac-status .ac-icon{font-size:38px}
+.ac-status .ac-info{flex:1}
+.ac-status .ac-title{font-size:16px;font-weight:bold;color:#cdd6f4}
+.ac-status .ac-msg{font-size:12px;color:#a6adc8;margin-top:4px}
+.ac-session{background:#11111b;padding:10px 14px;border-radius:8px;color:#f9e2af;font-family:monospace;font-size:12px;margin-top:8px;word-break:break-all}
+.ac-device-info{background:#11111b;padding:12px;border-radius:8px;margin-top:10px;font-size:12px;color:#cdd6f4}
+.ac-device-info .row{display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid #313244}
+.ac-device-info .row:last-child{border-bottom:none}
+.ac-device-info .lbl{color:#a6adc8}
+.ac-device-info .val{color:#89b4fa;font-weight:bold}
+.ac-badge{display:inline-block;background:#a6e3a1;color:#1e1e2e;padding:2px 10px;border-radius:12px;font-size:10px;font-weight:bold;margin-left:6px}
+.ac-badge.new{background:#f9e2af}
 </style>
 </head>
 <body>
@@ -1065,6 +1092,122 @@ function copyKeywords() {
 }
 
 loadSEOStats();
+
+// ═══════════════════════════════════════════════════════════
+// AUTO-CONNECT — photo → mobile → connect
+// ═══════════════════════════════════════════════════════════
+let currentSession = null;
+
+async function autoConnect() {
+  const fd = new FormData();
+  const slots = ['analogue_meter', 'multimeter', 'dc_supply', 'extra'];
+  let hasFile = false;
+
+  for (const slot of slots) {
+    const input = document.getElementById('photo_' + slot);
+    if (input && input.files && input.files[0]) {
+      fd.append(slot, input.files[0]);
+      hasFile = true;
+    }
+  }
+
+  if (!hasFile) {
+    alert('কমপক্ষে একটা ছবি দিন — Analyse-এর জন্য');
+    return;
+  }
+
+  const panel = document.getElementById('acPanel');
+  const result = document.getElementById('acResult');
+  panel.classList.add('active');
+  result.classList.add('active');
+  result.innerHTML = '<div class="ac-status"><span class="ac-icon">⏳</span><div class="ac-info"><div class="ac-title">Connecting...</div><div class="ac-msg">ছবি analysis + database check চলছে</div></div></div>';
+
+  try {
+    const res = await fetch('/api/auto-connect/connect', { method: 'POST', body: fd });
+    const data = await res.json();
+
+    if (!data.ok) {
+      result.innerHTML = '<div class="ac-status failed"><span class="ac-icon">❌</span><div class="ac-info"><div class="ac-title">Connection Failed</div><div class="ac-msg">' + (data.message || 'Error') + '</div></div></div>';
+      return;
+    }
+
+    const conn = data.connection;
+    const analysis = data.analysis || {};
+    currentSession = conn.session_id;
+    document.getElementById('acDisconnectBtn').style.display = 'inline-block';
+
+    const device = conn.device || {};
+    const deviceTag = conn.auto_added ? '<span class="ac-badge new">NEW — Auto-added</span>' : (conn.already_existed ? '<span class="ac-badge">Already in DB</span>' : '');
+
+    result.innerHTML = `
+      <div class="ac-status connected">
+        <span class="ac-icon">✅</span>
+        <div class="ac-info">
+          <div class="ac-title">Mobile Connected! ${deviceTag}</div>
+          <div class="ac-msg">${conn.message || 'Connected'}</div>
+        </div>
+      </div>
+      <div class="ac-session">Session ID: ${conn.session_id}</div>
+      <div class="ac-device-info">
+        <div class="row"><span class="lbl">Brand</span><span class="val">${device.brand || analysis.brand || '-'}</span></div>
+        <div class="row"><span class="lbl">Model</span><span class="val">${device.model || analysis.model || '-'}</span></div>
+        <div class="row"><span class="lbl">Chipset</span><span class="val">${device.chipset || '-'}</span></div>
+        <div class="row"><span class="lbl">Confidence</span><span class="val">${analysis.confidence || 0}%</span></div>
+        <div class="row"><span class="lbl">Verdict</span><span class="val">${(analysis.diagnosis && analysis.diagnosis.verdict) || '-'}</span></div>
+      </div>
+    `;
+  } catch (e) {
+    result.innerHTML = '<div class="ac-status failed"><span class="ac-icon">❌</span><div class="ac-info"><div class="ac-title">Network Error</div><div class="ac-msg">' + e.message + '</div></div></div>';
+  }
+}
+
+async function disconnectMobile() {
+  if (!currentSession) return;
+  if (!confirm('Disconnect this mobile?')) return;
+
+  try {
+    await fetch('/api/auto-connect/disconnect', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({session_id: currentSession})
+    });
+    alert('✅ Disconnected');
+    currentSession = null;
+    document.getElementById('acResult').classList.remove('active');
+    document.getElementById('acDisconnectBtn').style.display = 'none';
+  } catch (e) {
+    alert('Error: ' + e.message);
+  }
+}
+
+async function listConnectedDevices() {
+  try {
+    const res = await fetch('/api/auto-connect/devices');
+    const data = await res.json();
+    const result = document.getElementById('acResult');
+    result.classList.add('active');
+
+    if (!data.ok || !data.devices.length) {
+      result.innerHTML = '<div class="ac-status"><span class="ac-icon">📭</span><div class="ac-info"><div class="ac-title">No devices connected</div></div></div>';
+      return;
+    }
+
+    let html = '<h4 style="color:#a6e3a1;margin-bottom:10px;">Connected Devices (' + data.count + ')</h4>';
+    data.devices.forEach(d => {
+      html += `
+        <div class="ac-device-info" style="margin-bottom:8px;">
+          <div class="row"><span class="lbl">Session</span><span class="val">${d.session_id}</span></div>
+          <div class="row"><span class="lbl">Device</span><span class="val">${d.device.brand} ${d.device.model}</span></div>
+          <div class="row"><span class="lbl">User</span><span class="val">${d.user_email}</span></div>
+          <div class="row"><span class="lbl">Time</span><span class="val">${d.connected_at}</span></div>
+        </div>
+      `;
+    });
+    result.innerHTML = html;
+  } catch (e) {
+    alert('Error: ' + e.message);
+  }
+}
 </script>
 </body>
 </html>

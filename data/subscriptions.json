@@ -12,5 +12,12 @@
     "started_at": "2026-10-13T01:24:27",
     "expires_at": "2027-04-11T01:24:27",
     "warning_shown": false
+  },
+  "test@test.com": {
+    "email": "test@test.com",
+    "plan": "trial",
+    "started_at": "2026-10-13T11:39:30",
+    "expires_at": "2027-04-11T11:39:30",
+    "warning_shown": false
   }
 }

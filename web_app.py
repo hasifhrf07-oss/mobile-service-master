@@ -1419,6 +1419,166 @@ def api_me_stats():
         })
     except Exception as e:
         return jsonify({"ok": False, "message": str(e)}), 500
+
+
+# ═════════════════════════════════════════════════════════
+# AUTO-CONNECT SYSTEM (auto_connect_added)
+# ═════════════════════════════════════════════════════════
+
+@app.route("/api/auto-connect/connect", methods=["POST"])
+@login_required
+def api_auto_connect():
+    """
+    Photo analysis → auto-add to DB → connect mobile to app
+    """
+    try:
+        import uuid as _uuid
+        from werkzeug.utils import secure_filename as _sec
+        from core.auto_connect import connect_device
+        from core.deep_analyzer import deep_analyze
+
+        job_id = str(_uuid.uuid4())
+        job_folder = os.path.join(UPLOAD_DIR, "connect_" + job_id)
+        os.makedirs(job_folder, exist_ok=True)
+
+        slots = ["analogue_meter", "multimeter", "dc_supply", "extra"]
+        photo_paths = {}
+
+        for slot in slots:
+            file = request.files.get(slot)
+            if file and file.filename and _allowed(file.filename):
+                fname = f"{slot}_{_sec(file.filename)}"
+                path = os.path.join(job_folder, fname)
+                file.save(path)
+                photo_paths[slot] = path
+
+        if not photo_paths:
+            return jsonify({"ok": False, "message": "কোনো বৈধ ছবি নেই"}), 400
+
+        # Deep analysis
+        report = deep_analyze(photo_paths)
+
+        # Extract brand/model from report
+        brand = report.get("brand", "")
+        if not brand:
+            for slot, p in report.get("photos", {}).items():
+                ocr_raw = p.get("ocr_raw", "")
+                for b in ["samsung", "xiaomi", "vivo", "oppo", "realme",
+                          "oneplus", "apple", "huawei", "tecno", "itel",
+                          "infinix", "nokia", "motorola", "sony", "google",
+                          "honor", "nothing"]:
+                    if b in ocr_raw.lower():
+                        brand = b.title()
+                        break
+                if brand:
+                    break
+
+        # Try to get model from photos
+        model = ""
+        for slot, p in report.get("photos", {}).items():
+            ocr = p.get("ocr_raw", "")
+            import re
+            patterns = [
+                r"(SM-[A-Z]\d{3}[A-Z]?)",
+                r"(Redmi\s+Note\s+\d+\s*(?:Pro)?)",
+                r"(Redmi\s+\d+\s*(?:Pro)?)",
+                r"(Vivo\s+Y\d+)",
+                r"(Oppo\s+A\d+)",
+                r"(iPhone\s+\d+)",
+            ]
+            for pat in patterns:
+                m = re.search(pat, ocr, re.IGNORECASE)
+                if m:
+                    model = m.group(1).strip()
+                    break
+            if model:
+                break
+
+        # Add brand/model to report
+        report["brand"] = brand
+        report["model"] = model
+
+        # Connect device
+        connect_result = connect_device(
+            user_email=session.get("email"),
+            photo_paths=photo_paths,
+            analysis_result=report,
+        )
+
+        # Save to DB
+        try:
+            db.save_meter_job(
+                job_id=job_id,
+                user_email=session.get("email"),
+                photos_json=json.dumps(photo_paths),
+                brand=brand,
+            )
+            db.update_meter_job(
+                job_id=job_id,
+                status="connected",
+                confidence=report.get("confidence", 0),
+                result_json=json.dumps({**report, **connect_result}),
+            )
+        except Exception as e:
+            print(f"[AUTO-CONNECT DB] {e}")
+
+        return jsonify({
+            "ok": True,
+            "analysis": report,
+            "connection": connect_result,
+        })
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({"ok": False, "message": str(e)}), 500
+
+
+@app.route("/api/auto-connect/disconnect", methods=["POST"])
+@login_required
+def api_auto_disconnect():
+    try:
+        from core.auto_connect import disconnect_device
+        data = request.get_json() or {}
+        sid = data.get("session_id", "")
+        if not sid:
+            return jsonify({"ok": False, "message": "session_id required"})
+        ok = disconnect_device(sid)
+        return jsonify({"ok": ok})
+    except Exception as e:
+        return jsonify({"ok": False, "message": str(e)})
+
+
+@app.route("/api/auto-connect/devices")
+@login_required
+def api_connected_devices():
+    """List connected devices"""
+    try:
+        from core.auto_connect import get_connected_devices
+        devices = get_connected_devices()
+        # Filter by user unless admin
+        email = session.get("email")
+        if not is_admin(email):
+            devices = [d for d in devices if d.get("user_email") == email]
+        return jsonify({"ok": True, "devices": devices, "count": len(devices)})
+    except Exception as e:
+        return jsonify({"ok": False, "message": str(e)})
+
+
+@app.route("/api/auto-connect/session/<session_id>")
+@login_required
+def api_session_details(session_id):
+    try:
+        from core.auto_connect import get_session_details
+        s = get_session_details(session_id)
+        if not s:
+            return jsonify({"ok": False, "message": "Session not found"}), 404
+        return jsonify({"ok": True, "session": s})
+    except Exception as e:
+        return jsonify({"ok": False, "message": str(e)})
+
+
+
 if __name__ == "__main__":
     print()
     print("=" * 62)

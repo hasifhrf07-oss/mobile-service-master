@@ -1,65 +1,32 @@
-﻿"""Learning Log — JSONL + retrain"""
-import os
-import json
+﻿import os, json
 from datetime import datetime
 from collections import Counter
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
-LOG_FILE = os.path.join(ROOT, "data", "comment_learning.jsonl")
-LEARNED_FILE = os.path.join(ROOT, "data", "learned_keywords.json")
-
-os.makedirs(os.path.dirname(LOG_FILE), exist_ok=True)
-
+LOG = os.path.join(ROOT, "data", "comment_learning.jsonl")
 
 def log_comment(entry):
+    os.makedirs(os.path.dirname(LOG), exist_ok=True)
     entry["logged_at"] = datetime.now().isoformat(timespec="seconds")
-    with open(LOG_FILE, "a", encoding="utf-8") as f:
+    with open(LOG, "a", encoding="utf-8") as f:
         f.write(json.dumps(entry, ensure_ascii=False) + "\n")
 
-
 def get_stats():
-    if not os.path.exists(LOG_FILE):
-        return {"total": 0, "last_trained": None}
-
-    total = 0
-    with open(LOG_FILE, "r", encoding="utf-8") as f:
-        for _ in f:
-            total += 1
-
-    trained = None
-    if os.path.exists(LEARNED_FILE):
-        try:
-            trained = json.load(open(LEARNED_FILE, "r", encoding="utf-8")).get("trained_at")
-        except Exception:
-            pass
-
-    return {"total": total, "last_trained": trained}
-
+    if not os.path.exists(LOG): return {"total": 0}
+    c = 0
+    with open(LOG, "r", encoding="utf-8") as f:
+        for _ in f: c += 1
+    return {"total": c, "last_trained": None}
 
 def retrain():
-    if not os.path.exists(LOG_FILE):
-        return {"ok": False, "message": "No logs to train"}
-
+    if not os.path.exists(LOG): return {"ok": False}
     counter = Counter()
-    with open(LOG_FILE, "r", encoding="utf-8") as f:
+    with open(LOG, "r", encoding="utf-8") as f:
         for line in f:
             try:
-                entry = json.loads(line)
-                text = entry.get("text", "").lower()
-                for w in text.split():
-                    w = w.strip(".,!?।\"'()-")
-                    if len(w) >= 3:
-                        counter[w] += 1
-            except Exception:
-                continue
-
-    learned = {
-        "keywords": dict(counter.most_common(200)),
-        "trained_at": datetime.now().isoformat(timespec="seconds"),
-        "total_comments": sum(counter.values()),
-    }
-
-    with open(LEARNED_FILE, "w", encoding="utf-8") as f:
-        json.dump(learned, f, ensure_ascii=False, indent=2)
-
-    return {"ok": True, "top_keywords": list(learned["keywords"].items())[:20]}
+                e = json.loads(line)
+                for w in e.get("text", "").lower().split():
+                    w = w.strip(".,!?।")
+                    if len(w) >= 3: counter[w] += 1
+            except: continue
+    return {"ok": True, "top": list(counter.most_common(20))}
