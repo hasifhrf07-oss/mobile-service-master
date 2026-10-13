@@ -1579,6 +1579,211 @@ def api_session_details(session_id):
 
 
 
+
+
+# ═════════════════════════════════════════════════════════
+# WHATSAPP + MLM + SOFTWARE SOLVER (whatsapp_routes_added)
+# ═════════════════════════════════════════════════════════
+
+# ── WhatsApp ──
+@app.route("/api/whatsapp/config", methods=["GET", "POST"])
+@admin_required
+def api_whatsapp_config():
+    from core.whatsapp_sender import get_config, set_config
+    if request.method == "GET":
+        return jsonify({"ok": True, "config": get_config()})
+    data = request.get_json() or {}
+    set_config(data)
+    return jsonify({"ok": True, "config": get_config()})
+
+
+@app.route("/api/whatsapp/test", methods=["POST"])
+@admin_required
+def api_whatsapp_test():
+    from core.whatsapp_sender import test_send
+    return jsonify(test_send())
+
+
+@app.route("/api/whatsapp/send-report", methods=["POST"])
+@login_required
+def api_whatsapp_send_report():
+    from core.whatsapp_sender import send_report
+    data = request.get_json() or {}
+    result = send_report(
+        number=data.get("number", ""),
+        customer_name=data.get("customer_name", ""),
+        phone_model=data.get("phone_model", ""),
+        issue=data.get("issue", ""),
+        diagnosis=data.get("diagnosis", ""),
+    )
+    return jsonify(result)
+
+
+# ── MLM ──
+@app.route("/api/mlm/status")
+@login_required
+def api_mlm_status():
+    from core.mlm_system import get_user_status
+    email = session.get("email", "")
+    return jsonify(get_user_status(email))
+
+
+@app.route("/api/mlm/register", methods=["POST"])
+@login_required
+def api_mlm_register():
+    from core.mlm_system import register_user
+    data = request.get_json() or {}
+    email = data.get("email", "")
+    referrer = data.get("referrer", "")
+    return jsonify(register_user(email, referrer))
+
+
+@app.route("/api/mlm/stats")
+@admin_required
+def api_mlm_stats():
+    from core.mlm_system import get_stats
+    return jsonify(get_stats())
+
+
+@app.route("/api/mlm/add-member", methods=["POST"])
+@admin_required
+def api_mlm_add_member():
+    from core.mlm_system import add_team_member
+    data = request.get_json() or {}
+    return jsonify(add_team_member(
+        data.get("user_email", ""),
+        data.get("member_email", "")
+    ))
+
+
+# ── Software Solver ──
+@app.route("/api/solve/auto", methods=["POST"])
+@login_required
+def api_auto_solve():
+    from core.software_solver import SoftwareSolver
+    solver = SoftwareSolver()
+    result = solver.full_diagnose_and_solve()
+    return jsonify(result)
+
+
+@app.route("/api/solve/action", methods=["POST"])
+@login_required
+def api_solve_action():
+    from core.software_solver import SoftwareSolver
+    data = request.get_json() or {}
+    action = data.get("action", "")
+    solver = SoftwareSolver()
+
+    actions = {
+        "cache_wipe": solver.solve_cache_wipe,
+        "battery_reset": solver.solve_battery_stats,
+        "network_reset": solver.solve_network_reset,
+        "display_reset": solver.solve_display_reset,
+        "reboot": solver.solve_soft_reboot,
+        "recovery": solver.solve_recovery_mode,
+        "fastboot": solver.solve_fastboot_mode,
+    }
+
+    if action in actions:
+        return jsonify(actions[action]())
+    return jsonify({"success": False, "message": "Unknown action"})
+
+
+
+
+
+# ============================================================
+# LANGUAGE ROUTES (language_routes_added)
+# ============================================================
+
+@app.route("/api/languages")
+def api_languages():
+    from core.language_manager import get_available_languages
+    return jsonify({"ok": True, "languages": get_available_languages()})
+
+
+@app.route("/api/translations/<lang>")
+def api_translations(lang):
+    from core.language_manager import get_all_translations
+    return jsonify({"ok": True, "lang": lang, "translations": get_all_translations(lang)})
+
+
+@app.route("/api/set-language", methods=["POST"])
+def api_set_language():
+    data = request.get_json() or {}
+    lang = data.get("lang", "en")
+    session["language"] = lang
+    return jsonify({"ok": True, "language": lang})
+
+
+
+
+
+# ============================================================
+# MASTER ADMIN DASHBOARD (admin_master_route_added)
+# ============================================================
+
+@app.route("/admin-master")
+@login_required
+def admin_master():
+    """Master admin dashboard — 12-tab all-in-one"""
+    email = session.get("email", "")
+    if not is_admin(email):
+        return redirect(url_for("dashboard_v2"))
+
+    return render_template("admin_master.html", email=email)
+
+
+@app.route("/api/backup/now", methods=["POST"])
+@admin_required
+def api_backup_now():
+    """Manual backup trigger"""
+    try:
+        from scripts.monthly_backup import run_backup
+        path = run_backup()
+        return jsonify({"ok": True, "path": path})
+    except Exception as e:
+        return jsonify({"ok": False, "message": str(e)})
+
+
+
+
+
+# ============================================================
+# ONBOARDING ROUTES (onboarding_routes_added)
+# ============================================================
+
+@app.route("/api/onboarding/status")
+@login_required
+def api_onboarding_status():
+    from core.user_onboarding import is_onboarded, get_greeting
+    email = session.get("email", "")
+    lang = session.get("language", "en")
+    return jsonify({
+        "ok": True,
+        "is_onboarded": is_onboarded(email),
+        "greeting": get_greeting(lang),
+        "lang": lang,
+    })
+
+
+@app.route("/api/onboarding/complete", methods=["POST"])
+@login_required
+def api_onboarding_complete():
+    from core.user_onboarding import mark_onboarded
+    email = session.get("email", "")
+    mark_onboarded(email)
+    return jsonify({"ok": True, "message": "Onboarding complete"})
+
+
+@app.route("/api/onboarding/stats")
+@admin_required
+def api_onboarding_stats():
+    from core.user_onboarding import get_stats
+    return jsonify({"ok": True, **get_stats()})
+
+
+
 if __name__ == "__main__":
     print()
     print("=" * 62)
@@ -1595,3 +1800,6 @@ if __name__ == "__main__":
 
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port, debug=False, threaded=True)
+
+
+

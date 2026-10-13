@@ -225,7 +225,8 @@ textarea:focus{outline:none;border-color:#89b4fa}
       {% if is_admin %}👑 Admin{% elif role == "technician" %}🔧 Technician{% else %}⏳ Pending{% endif %}
     </div>
     <div style="opacity:.7;font-size:11px;margin-top:3px">{{ login_time[:19] }}</div>
-    <button class="logout" onclick="logout()">Logout</button>
+    <a href="/admin-master" id="admin-master-link" style="background:rgba(30,30,46,.3);color:#1e1e2e;padding:6px 14px;border-radius:15px;font-size:12px;font-weight:bold;text-decoration:none;margin-right:6px;">🛡️ Admin Master</a>
+  <button class="logout" onclick="logout()">Logout</button>
   </div>
 </div>
 

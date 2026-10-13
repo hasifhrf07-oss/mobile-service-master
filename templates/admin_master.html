@@ -1,0 +1,803 @@
+﻿<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Master Admin Dashboard — Mobile Service Master</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:"Nirmala UI","Segoe UI",Arial,sans-serif;background:linear-gradient(135deg,#1e1e2e,#181825);color:#e0e0e0;min-height:100vh;padding:15px}
+.container{max-width:1400px;margin:0 auto;background:#1e1e2e;border-radius:15px;box-shadow:0 10px 40px rgba(0,0,0,.5);overflow:hidden}
+
+/* Header */
+.header{background:linear-gradient(135deg,#89b4fa,#cba6f7);padding:16px 22px;color:#1e1e2e;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px}
+.header h1{font-size:20px;display:flex;align-items:center;gap:8px}
+.user{font-size:12px;text-align:right}
+.user .email{font-weight:bold}
+.user .role{background:rgba(30,30,46,.3);padding:2px 10px;border-radius:10px;font-size:10px;font-weight:bold;display:inline-block;margin-top:3px}
+.logout{background:rgba(30,30,46,.3);color:#1e1e2e;border:none;padding:6px 14px;border-radius:15px;cursor:pointer;font-size:12px;font-weight:bold;margin-top:5px;font-family:inherit}
+.lang-select{background:rgba(30,30,46,.3);color:#1e1e2e;border:none;padding:6px 12px;border-radius:15px;font-size:12px;font-weight:bold;font-family:inherit;cursor:pointer;margin-right:8px}
+
+/* Tabs */
+.tabs{display:flex;background:#181825;border-bottom:2px solid #313244;overflow-x:auto;scrollbar-width:thin}
+.tab{flex:0 0 auto;min-width:100px;padding:14px 12px;text-align:center;cursor:pointer;background:#181825;color:#a6adc8;font-size:12px;font-weight:bold;border:none;font-family:inherit;border-bottom:3px solid transparent;white-space:nowrap}
+.tab.active{background:#313244;color:#89b4fa;border-bottom-color:#89b4fa}
+.tab:hover:not(.active){background:#252536}
+
+.content{padding:22px;min-height:520px}
+.panel{display:none}
+.panel.active{display:block}
+
+/* Overview Stats */
+.stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px;margin-bottom:20px}
+.stat-card{background:linear-gradient(135deg,rgba(137,180,250,.12),rgba(203,166,247,.12));padding:18px;border-radius:12px;border-left:4px solid #89b4fa;transition:.2s}
+.stat-card:hover{transform:translateY(-2px)}
+.stat-card .num{font-size:28px;font-weight:900;color:#89b4fa;display:block;margin-bottom:6px}
+.stat-card .lbl{font-size:11px;color:#a6adc8;text-transform:uppercase;letter-spacing:1px;font-weight:600}
+.stat-card.green{border-left-color:#a6e3a1}.stat-card.green .num{color:#a6e3a1}
+.stat-card.purple{border-left-color:#cba6f7}.stat-card.purple .num{color:#cba6f7}
+.stat-card.yellow{border-left-color:#f9e2af}.stat-card.yellow .num{color:#f9e2af}
+.stat-card.red{border-left-color:#f38ba8}.stat-card.red .num{color:#f38ba8}
+
+/* Cards */
+.card{background:#181825;padding:18px;border-radius:12px;margin-bottom:16px;border-left:4px solid #89b4fa}
+.card h3{color:#89b4fa;font-size:13px;margin-bottom:12px;text-transform:uppercase;letter-spacing:1px}
+.card.purple{border-left-color:#cba6f7}.card.purple h3{color:#cba6f7}
+.card.green{border-left-color:#a6e3a1}.card.green h3{color:#a6e3a1}
+.card.yellow{border-left-color:#f9e2af}.card.yellow h3{color:#f9e2af}
+.card.red{border-left-color:#f38ba8}.card.red h3{color:#f38ba8}
+
+/* Buttons */
+.btn{background:linear-gradient(135deg,#89b4fa,#cba6f7);color:#1e1e2e;border:none;padding:10px 18px;border-radius:8px;font-size:13px;font-weight:bold;cursor:pointer;font-family:inherit;margin-right:6px;margin-bottom:6px;transition:.2s}
+.btn:hover{opacity:.9;transform:translateY(-1px)}
+.btn.secondary{background:#313244;color:#89b4fa;border:1px solid #45475a}
+.btn.danger{background:#f38ba8;color:#1e1e2e}
+.btn.success{background:#a6e3a1;color:#1e1e2e}
+
+/* Inputs */
+.input{width:100%;background:#11111b;color:#cdd6f4;border:1px solid #45475a;padding:10px 12px;border-radius:8px;font-family:inherit;font-size:13px;margin-bottom:8px}
+.input:focus{outline:none;border-color:#89b4fa}
+textarea.input{min-height:70px;resize:vertical}
+
+/* Grid layout */
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+
+/* Tables */
+table{width:100%;border-collapse:collapse;background:#11111b;border-radius:10px;overflow:hidden;font-size:13px}
+th{background:#252536;color:#89b4fa;padding:10px;text-align:left;font-size:11px;text-transform:uppercase}
+td{padding:10px;border-bottom:1px solid #313244;color:#cdd6f4}
+tr:hover td{background:#252536}
+
+/* Messages */
+.msg{padding:12px 16px;border-radius:8px;margin:10px 0;font-size:13px;display:none}
+.msg.active{display:block}
+.msg.success{background:rgba(166,227,161,.15);border-left:4px solid #a6e3a1;color:#a6e3a1}
+.msg.error{background:rgba(243,139,168,.15);border-left:4px solid #f38ba8;color:#f38ba8}
+.msg.warning{background:rgba(249,226,175,.15);border-left:4px solid #f9e2af;color:#f9e2af}
+.msg.info{background:rgba(137,180,250,.15);border-left:4px solid #89b4fa;color:#89b4fa}
+
+/* Language selector */
+.lang-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin-top:16px}
+.lang-card{background:#181825;padding:20px;border-radius:12px;text-align:center;cursor:pointer;border:2px solid #313244;transition:.2s}
+.lang-card:hover{border-color:#89b4fa;transform:translateY(-3px)}
+.lang-card.selected{border-color:#a6e3a1;background:rgba(166,227,161,.1)}
+.lang-card .flag{font-size:42px;margin-bottom:8px}
+.lang-card .name{font-size:15px;font-weight:bold;color:#f1f5f9}
+.lang-card .code{font-size:11px;color:#94a3b8;margin-top:4px}
+</style>
+</head>
+<body>
+<div class="container">
+
+<!-- HEADER -->
+<div class="header">
+  <h1>🛡️ Master Admin Dashboard</h1>
+  <div class="user">
+    <div class="email">👤 {{ email }}</div>
+    <div class="role">👑 ADMIN</div>
+    <div style="margin-top:6px;display:flex;gap:6px;justify-content:flex-end;">
+      <select class="lang-select" id="langSelect" onchange="changeLanguage(this.value)">
+        <option value="bn">বাংলা</option>
+        <option value="en" selected>English</option>
+        <option value="hi">हिन्दी</option>
+        <option value="ar">العربية</option>
+      </select>
+      <button class="logout" onclick="window.location.href='/logout'">Logout</button>
+    </div>
+  </div>
+</div>
+
+<!-- TABS -->
+<div class="tabs">
+  <button class="tab active" data-tab="overview">📊 Overview</button>
+  <button class="tab" data-tab="autodetect">🔌 Auto-Detect</button>
+  <button class="tab" data-tab="scanner">🔬 Scanner</button>
+  <button class="tab" data-tab="picture">📸 Picture</button>
+  <button class="tab" data-tab="boardview">📐 BoardView</button>
+  <button class="tab" data-tab="result">📊 Result</button>
+  <button class="tab" data-tab="history">📜 History</button>
+  <button class="tab" data-tab="users">👥 Users</button>
+  <button class="tab" data-tab="comments">💬 Comments</button>
+  <button class="tab" data-tab="analytics">📈 Analytics</button>
+  <button class="tab" data-tab="language">🌐 Language</button>
+  <button class="tab" data-tab="settings">⚙️ Settings</button>
+</div>
+
+<div class="content">
+
+<!-- OVERVIEW TAB -->
+<div id="panel-overview" class="panel active">
+  <div class="stats-grid">
+    <div class="stat-card">
+      <span class="num" id="ovModels">—</span>
+      <span class="lbl" data-i18n="features.total_models">Total Models</span>
+    </div>
+    <div class="stat-card green">
+      <span class="num" id="ovBrands">—</span>
+      <span class="lbl" data-i18n="features.brands">Brands</span>
+    </div>
+    <div class="stat-card purple">
+      <span class="num" id="ovUsers">—</span>
+      <span class="lbl" data-i18n="features.users">Users</span>
+    </div>
+    <div class="stat-card yellow">
+      <span class="num" id="ovLive">—</span>
+      <span class="lbl">Live Now</span>
+    </div>
+    <div class="stat-card red">
+      <span class="num" id="ovClones">—</span>
+      <span class="lbl" data-i18n="features.clone_models">Clones</span>
+    </div>
+  </div>
+
+  <div class="card purple">
+    <h3>🚀 Quick Actions</h3>
+    <button class="btn" onclick="loadOverview()">🔄 Refresh Stats</button>
+    <button class="btn secondary" onclick="window.location.href='/dashboard-v2'">📱 Technician View</button>
+    <button class="btn secondary" onclick="openChart()">📊 View System Chart</button>
+    <button class="btn success" onclick="backupNow()">💾 Backup Now</button>
+  </div>
+
+  <div class="card">
+    <h3>📊 Live User Monitor</h3>
+    <div id="overviewLiveUsers">Loading...</div>
+  </div>
+</div>
+
+<!-- AUTO-DETECT TAB -->
+<div id="panel-autodetect" class="panel">
+  <div class="card">
+    <h3>🔌 5-Mode Detection</h3>
+    <p style="color:#a6adc8;font-size:13px;margin-bottom:12px;">
+      ADB / Fastboot / EDL / MTK / iPhone — সব mode auto-detect করবে।
+    </p>
+    <div class="grid-4">
+      <div class="card" style="border-left-color:#89b4fa;padding:12px;text-align:center;">
+        <div style="font-size:28px;">📱</div>
+        <div style="font-weight:bold;color:#89b4fa;">ADB</div>
+      </div>
+      <div class="card" style="border-left-color:#f9e2af;padding:12px;text-align:center;">
+        <div style="font-size:28px;">⚡</div>
+        <div style="font-weight:bold;color:#f9e2af;">Fastboot</div>
+      </div>
+      <div class="card" style="border-left-color:#f38ba8;padding:12px;text-align:center;">
+        <div style="font-size:28px;">🔴</div>
+        <div style="font-weight:bold;color:#f38ba8;">EDL 9008</div>
+      </div>
+      <div class="card" style="border-left-color:#f38ba8;padding:12px;text-align:center;">
+        <div style="font-size:28px;">🔴</div>
+        <div style="font-weight:bold;color:#f38ba8;">MTK BROM</div>
+      </div>
+    </div>
+    <button class="btn" style="margin-top:16px;width:100%;" onclick="runAutoDetect()">
+      🚀 Run Auto-Detect
+    </button>
+  </div>
+  <div class="msg" id="detectMsg"></div>
+  <div id="detectResult"></div>
+</div>
+
+<!-- SCANNER TAB -->
+<div id="panel-scanner" class="panel">
+  <div class="card">
+    <h3>🔬 Motherboard Scanner</h3>
+    <div class="grid-2">
+      <input type="text" id="sc_brand" class="input" placeholder="Brand (Samsung)">
+      <input type="text" id="sc_model" class="input" placeholder="Model (SM-A105F)">
+      <input type="text" id="sc_chipset" class="input" placeholder="Chipset (Exynos 7884)">
+      <input type="text" id="sc_serial" class="input" placeholder="Serial Number">
+    </div>
+    <h4 style="color:#89b4fa;font-size:12px;margin:12px 0 8px;">⚡ Rail Readings (V)</h4>
+    <div class="grid-4">
+      <input type="number" step="0.01" id="sc_vbat" class="input" placeholder="VBAT">
+      <input type="number" step="0.01" id="sc_vdd_cpu" class="input" placeholder="VDD_CPU">
+      <input type="number" step="0.01" id="sc_vdd_mem" class="input" placeholder="VDD_MEM">
+      <input type="number" step="0.01" id="sc_vcc_io" class="input" placeholder="VCC_IO">
+    </div>
+    <textarea id="sc_diagnosis" class="input" placeholder="Diagnosis notes..."></textarea>
+    <button class="btn" onclick="runScannerCapture()">🔬 Capture Board State</button>
+    <button class="btn secondary" onclick="loadScannerHistory()">📜 View History</button>
+  </div>
+  <div class="msg" id="scannerMsg"></div>
+  <div id="scannerResult"></div>
+</div>
+
+<!-- PICTURE TAB -->
+<div id="panel-picture" class="panel">
+  <div class="card">
+    <h3>📸 Photo Analysis (4 Photos)</h3>
+    <div class="grid-2">
+      <div>
+        <label style="color:#a6adc8;font-size:12px;">📷 Picture 1 — Analogue</label>
+        <input type="file" id="adm_photo_analogue" class="input" accept="image/*">
+      </div>
+      <div>
+        <label style="color:#a6adc8;font-size:12px;">📷 Picture 2 — Multimeter</label>
+        <input type="file" id="adm_photo_multimeter" class="input" accept="image/*">
+      </div>
+      <div>
+        <label style="color:#a6adc8;font-size:12px;">📷 Picture 3 — DC Supply</label>
+        <input type="file" id="adm_photo_dc" class="input" accept="image/*">
+      </div>
+      <div>
+        <label style="color:#a6adc8;font-size:12px;">📷 Picture 4 — Extra</label>
+        <input type="file" id="adm_photo_extra" class="input" accept="image/*">
+      </div>
+    </div>
+    <button class="btn" style="margin-top:12px;width:100%;" onclick="runPictureAnalysis()">
+      🚀 Upload & Analyze
+    </button>
+  </div>
+  <div class="msg" id="pictureMsg"></div>
+  <div id="pictureResult"></div>
+</div>
+
+<!-- BOARDVIEW TAB -->
+<div id="panel-boardview" class="panel">
+  <div class="card">
+    <h3>📐 BoardView Files</h3>
+    <div class="grid-2">
+      <input type="text" id="bv_brand" class="input" placeholder="Brand">
+      <input type="text" id="bv_model" class="input" placeholder="Model">
+    </div>
+    <input type="text" id="bv_path" class="input" placeholder="File path (.brd/.pdf)">
+    <button class="btn" onclick="registerBoardView()">📐 Register File</button>
+    <button class="btn secondary" onclick="loadBoardViewList()">🔄 Refresh</button>
+  </div>
+  <div id="boardviewList"></div>
+</div>
+
+<!-- RESULT TAB -->
+<div id="panel-result" class="panel">
+  <div class="card"><h3>📊 Diagnosis Result</h3>
+    <div id="admResult"><p style="color:#6c7086;">No result yet. Run Auto-Detect or Picture Analysis.</p></div>
+  </div>
+</div>
+
+<!-- HISTORY TAB -->
+<div id="panel-history" class="panel">
+  <div class="card">
+    <h3>📜 Service History</h3>
+    <button class="btn" onclick="loadHistory()">🔄 Refresh</button>
+    <button class="btn secondary" onclick="exportHistory()">📥 Export CSV</button>
+  </div>
+  <div id="historyTable"></div>
+</div>
+
+<!-- USERS TAB -->
+<div id="panel-users" class="panel">
+  <div class="card">
+    <h3>👥 User Management</h3>
+    <button class="btn" onclick="loadUsers()">🔄 Refresh</button>
+  </div>
+  <div id="usersTable"></div>
+</div>
+
+<!-- COMMENTS TAB -->
+<div id="panel-comments" class="panel">
+  <div class="card">
+    <h3>💬 Technician Comments</h3>
+    <button class="btn" onclick="loadComments()">🔄 Refresh</button>
+  </div>
+  <div id="commentsTable"></div>
+</div>
+
+<!-- ANALYTICS TAB -->
+<div id="panel-analytics" class="panel">
+  <div class="stats-grid">
+    <div class="stat-card"><span class="num" id="anTotal">—</span><span class="lbl">Total Users</span></div>
+    <div class="stat-card green"><span class="num" id="anLive">—</span><span class="lbl">Live Now</span></div>
+    <div class="stat-card purple"><span class="num" id="anToday">—</span><span class="lbl">Active Today</span></div>
+    <div class="stat-card yellow"><span class="num" id="anWeek">—</span><span class="lbl">This Week</span></div>
+  </div>
+  <div class="card"><h3>📊 Recent Activity</h3>
+    <div id="activityLog">Loading...</div>
+  </div>
+</div>
+
+<!-- LANGUAGE TAB -->
+<div id="panel-language" class="panel">
+  <div class="card purple">
+    <h3>🌐 Language Settings</h3>
+    <p style="color:#a6adc8;font-size:13px;">Select interface language for technicians</p>
+    <div class="lang-grid" id="langGrid"></div>
+  </div>
+</div>
+
+<!-- SETTINGS TAB -->
+<div id="panel-settings" class="panel">
+  <div class="card">
+    <h3>⚙️ System Settings</h3>
+    <div id="settingsInfo">Loading...</div>
+    <button class="btn" onclick="loadSettings()">🔄 Refresh</button>
+    <button class="btn success" onclick="backupNow()">💾 Backup</button>
+  </div>
+
+  <div class="card yellow">
+    <h3>📦 Auto EXE Delivery</h3>
+    <div id="deliveryConfig">Loading...</div>
+    <button class="btn" onclick="runDelivery()">🚀 Run Now</button>
+  </div>
+
+  <div class="card green">
+    <h3>💬 WhatsApp Config</h3>
+    <div id="whatsappConfig">Loading...</div>
+    <button class="btn" onclick="saveWhatsApp()">💾 Save</button>
+    <button class="btn secondary" onclick="testWhatsApp()">🧪 Test</button>
+  </div>
+
+  <div class="card purple">
+    <h3>👥 MLM System</h3>
+    <div id="mlmStats">Loading...</div>
+    <button class="btn" onclick="loadMLM()">🔄 Refresh</button>
+  </div>
+</div>
+
+</div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════
+// TAB SWITCHING
+// ═══════════════════════════════════════════════════════════
+document.querySelectorAll('.tab').forEach(t => t.addEventListener('click', () => {
+  document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  t.classList.add('active');
+  document.getElementById('panel-' + t.dataset.tab).classList.add('active');
+
+  const tab = t.dataset.tab;
+  if (tab === 'overview') loadOverview();
+  if (tab === 'history') loadHistory();
+  if (tab === 'users') loadUsers();
+  if (tab === 'comments') loadComments();
+  if (tab === 'analytics') loadAnalytics();
+  if (tab === 'language') loadLanguages();
+  if (tab === 'settings') loadSettings();
+  if (tab === 'boardview') loadBoardViewList();
+}));
+
+// ═══════════════════════════════════════════════════════════
+// OVERVIEW
+// ═══════════════════════════════════════════════════════════
+async function loadOverview() {
+  try {
+    const [dbRes, userRes, liveRes] = await Promise.all([
+      fetch('/api/db-stats'),
+      fetch('/api/admin/all-users').catch(() => null),
+      fetch('/api/admin/live-users').catch(() => null),
+    ]);
+
+    const db = await dbRes.json();
+    if (db.ok) {
+      document.getElementById('ovModels').textContent = (db.total_models || 0).toLocaleString();
+      document.getElementById('ovBrands').textContent = (db.brands || []).length;
+      document.getElementById('ovClones').textContent = db.clones || 0;
+    }
+
+    if (userRes) {
+      const u = await userRes.json();
+      if (u.ok) document.getElementById('ovUsers').textContent = (u.users || []).length;
+    }
+
+    if (liveRes) {
+      const l = await liveRes.json();
+      if (l.ok) {
+        document.getElementById('ovLive').textContent = l.count || 0;
+        const box = document.getElementById('overviewLiveUsers');
+        if (l.live_users && l.live_users.length) {
+          let h = '<table><tr><th>Email</th><th>Last Seen</th><th>IP</th></tr>';
+          l.live_users.forEach(x => {
+            h += `<tr><td>${x.email}</td><td>${(x.last_seen||'').substring(11,19)}</td><td>${x.ip || '-'}</td></tr>`;
+          });
+          h += '</table>';
+          box.innerHTML = h;
+        } else {
+          box.innerHTML = '<p style="color:#6c7086;">No live users</p>';
+        }
+      }
+    }
+  } catch (e) {
+    console.log('Overview error:', e);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+// AUTO-DETECT
+// ═══════════════════════════════════════════════════════════
+async function runAutoDetect() {
+  const msg = document.getElementById('detectMsg');
+  const result = document.getElementById('detectResult');
+  msg.className = 'msg info active';
+  msg.textContent = '⏳ Scanning all modes...';
+
+  try {
+    const res = await fetch('/api/connect', {method: 'POST'});
+    const d = await res.json();
+    if (d.ok) {
+      msg.className = 'msg success active';
+      msg.textContent = '✅ Device detected!';
+      result.innerHTML = `<div class="card green"><h3>📱 ${d.device.brand} ${d.device.model}</h3>
+        <p>Chipset: ${d.device.chipset}</p><p>Android: ${d.device.android}</p></div>`;
+    } else {
+      msg.className = 'msg warning active';
+      msg.textContent = '⚠️ ' + (d.message || 'No device');
+    }
+  } catch (e) {
+    msg.className = 'msg error active';
+    msg.textContent = '❌ ' + e.message;
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+// SCANNER
+// ═══════════════════════════════════════════════════════════
+async function runScannerCapture() {
+  const data = {
+    brand: document.getElementById('sc_brand').value,
+    model: document.getElementById('sc_model').value,
+    chipset: document.getElementById('sc_chipset').value,
+    serial: document.getElementById('sc_serial').value,
+    readings: {
+      vbat: parseFloat(document.getElementById('sc_vbat').value) || 0,
+      vdd_cpu: parseFloat(document.getElementById('sc_vdd_cpu').value) || 0,
+      vdd_mem: parseFloat(document.getElementById('sc_vdd_mem').value) || 0,
+      vcc_io: parseFloat(document.getElementById('sc_vcc_io').value) || 0,
+    },
+    diagnosis: document.getElementById('sc_diagnosis').value,
+  };
+  if (!data.brand || !data.model) { alert('Brand & Model din'); return; }
+
+  try {
+    const res = await fetch('/api/scanner/capture', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(data)
+    });
+    const d = await res.json();
+    const msg = document.getElementById('scannerMsg');
+    msg.className = 'msg ' + (d.ok ? 'success' : 'error') + ' active';
+    msg.textContent = d.ok ? `✅ Scan saved: ${d.scan_id}` : '❌ ' + d.message;
+  } catch (e) {
+    alert('Error: ' + e.message);
+  }
+}
+
+async function loadScannerHistory() {
+  try {
+    const res = await fetch('/api/scanner/list');
+    const d = await res.json();
+    const el = document.getElementById('scannerResult');
+    if (d.ok && d.scans && d.scans.length) {
+      let h = '<table><tr><th>Scan ID</th><th>Device</th><th>Diagnosis</th></tr>';
+      d.scans.forEach(s => h += `<tr><td>${s.scan_id}</td><td>${s.brand} ${s.model}</td><td>${s.diagnosis||'-'}</td></tr>`);
+      h += '</table>';
+      el.innerHTML = h;
+    } else {
+      el.innerHTML = '<p style="color:#6c7086;">No scans yet</p>';
+    }
+  } catch (e) { console.log(e); }
+}
+
+// ═══════════════════════════════════════════════════════════
+// PICTURE
+// ═══════════════════════════════════════════════════════════
+async function runPictureAnalysis() {
+  const fd = new FormData();
+  const map = {analogue_meter: 'adm_photo_analogue', multimeter: 'adm_photo_multimeter',
+               dc_supply: 'adm_photo_dc', extra: 'adm_photo_extra'};
+  let has = false;
+  for (const k in map) {
+    const f = document.getElementById(map[k]).files[0];
+    if (f) { fd.append(k, f); has = true; }
+  }
+  if (!has) { alert('কমপক্ষে একটা ছবি দিন'); return; }
+
+  const msg = document.getElementById('pictureMsg');
+  msg.className = 'msg info active';
+  msg.textContent = '⏳ Analyzing...';
+
+  try {
+    const res = await fetch('/api/upload-meter-photos', {method: 'POST', body: fd});
+    const d = await res.json();
+    if (d.ok) {
+      msg.className = 'msg success active';
+      msg.textContent = '✅ Analysis complete';
+      document.getElementById('pictureResult').innerHTML = `
+        <div class="card green">
+          <h3>🎯 Brand: ${d.brand || 'Unknown'} (${d.brand_confidence || 0}%)</h3>
+          <p>Confidence: ${d.overall_confidence || 0}%</p>
+        </div>`;
+    } else {
+      msg.className = 'msg error active';
+      msg.textContent = '❌ ' + d.message;
+    }
+  } catch (e) { alert(e.message); }
+}
+
+// ═══════════════════════════════════════════════════════════
+// BOARDVIEW
+// ═══════════════════════════════════════════════════════════
+async function registerBoardView() {
+  const data = {
+    brand: document.getElementById('bv_brand').value,
+    model: document.getElementById('bv_model').value,
+    path: document.getElementById('bv_path').value,
+  };
+  if (!data.brand || !data.model || !data.path) { alert('সব field দিন'); return; }
+  try {
+    const res = await fetch('/api/boardview/register', {
+      method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(data)
+    });
+    const d = await res.json();
+    alert(d.message || 'Done');
+    loadBoardViewList();
+  } catch (e) { alert(e.message); }
+}
+
+async function loadBoardViewList() {
+  try {
+    const res = await fetch('/api/boardview/list');
+    const d = await res.json();
+    const el = document.getElementById('boardviewList');
+    if (d.ok && d.files && d.files.length) {
+      let h = '<table><tr><th>Brand</th><th>Model</th><th>File</th></tr>';
+      d.files.forEach(f => h += `<tr><td>${f.brand}</td><td>${f.model}</td><td>${f.file_path.split('\\').pop()}</td></tr>`);
+      h += '</table>';
+      el.innerHTML = h;
+    } else {
+      el.innerHTML = '<p style="color:#6c7086;">No BoardView files</p>';
+    }
+  } catch (e) { console.log(e); }
+}
+
+// ═══════════════════════════════════════════════════════════
+// HISTORY
+// ═══════════════════════════════════════════════════════════
+async function loadHistory() {
+  try {
+    const res = await fetch('/api/history-full');
+    const d = await res.json();
+    const el = document.getElementById('historyTable');
+    if (d.ok && d.scans && d.scans.length) {
+      let h = '<table><tr><th>Time</th><th>Device</th><th>Status</th></tr>';
+      d.scans.forEach(s => h += `<tr><td>${(s.ts||'').substring(0,19)}</td><td>${s.brand} ${s.model}</td><td>-</td></tr>`);
+      h += '</table>';
+      el.innerHTML = h;
+    } else {
+      el.innerHTML = '<p style="color:#6c7086;">No history</p>';
+    }
+  } catch (e) { console.log(e); }
+}
+
+function exportHistory() { window.open('/api/history-full', '_blank'); }
+
+// ═══════════════════════════════════════════════════════════
+// USERS
+// ═══════════════════════════════════════════════════════════
+async function loadUsers() {
+  try {
+    const res = await fetch('/api/admin/all-users');
+    const d = await res.json();
+    const el = document.getElementById('usersTable');
+    if (d.ok && d.users && d.users.length) {
+      let h = '<table><tr><th>Email</th><th>Role</th><th>Status</th><th>Action</th></tr>';
+      d.users.forEach(u => {
+        h += `<tr>
+          <td>${u.email}</td>
+          <td>${u.role || '-'}</td>
+          <td>${u.status || '-'}</td>
+          <td>
+            <button class="btn success" onclick="approveUser('${u.email}')">✅</button>
+            <button class="btn danger" onclick="rejectUser('${u.email}')">❌</button>
+          </td>
+        </tr>`;
+      });
+      h += '</table>';
+      el.innerHTML = h;
+    } else {
+      el.innerHTML = '<p style="color:#6c7086;">No users</p>';
+    }
+  } catch (e) { console.log(e); }
+}
+
+async function approveUser(email) {
+  await fetch('/api/admin/approve-user', {
+    method: 'POST', headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({email, role: 'technician'})
+  });
+  loadUsers();
+}
+
+async function rejectUser(email) {
+  if (!confirm('Reject ' + email + '?')) return;
+  await fetch('/api/admin/reject-user', {
+    method: 'POST', headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({email})
+  });
+  loadUsers();
+}
+
+// ═══════════════════════════════════════════════════════════
+// COMMENTS
+// ═══════════════════════════════════════════════════════════
+async function loadComments() {
+  try {
+    const res = await fetch('/api/admin/comments');
+    const d = await res.json();
+    const el = document.getElementById('commentsTable');
+    if (d.ok && d.all && d.all.length) {
+      let h = '<table><tr><th>User</th><th>Text</th><th>Reply</th></tr>';
+      d.all.forEach(c => h += `<tr><td>${c.user_email||'-'}</td><td>${c.text}</td><td>${c.auto_reply||'-'}</td></tr>`);
+      h += '</table>';
+      el.innerHTML = h;
+    } else {
+      el.innerHTML = '<p style="color:#6c7086;">No comments</p>';
+    }
+  } catch (e) { console.log(e); }
+}
+
+// ═══════════════════════════════════════════════════════════
+// ANALYTICS
+// ═══════════════════════════════════════════════════════════
+async function loadAnalytics() {
+  try {
+    const [statsRes, actRes] = await Promise.all([
+      fetch('/api/admin/user-stats'),
+      fetch('/api/admin/activity')
+    ]);
+    const s = await statsRes.json();
+    if (s.ok) {
+      document.getElementById('anTotal').textContent = s.total_users || 0;
+      document.getElementById('anLive').textContent = s.live_now || 0;
+      document.getElementById('anToday').textContent = s.active_today || 0;
+      document.getElementById('anWeek').textContent = s.active_this_week || 0;
+    }
+    const a = await actRes.json();
+    if (a.ok && a.activity && a.activity.length) {
+      let h = '<table><tr><th>Time</th><th>User</th><th>Action</th></tr>';
+      a.activity.forEach(x => h += `<tr><td>${(x.created_at||'').substring(11,19)}</td><td>${x.user_email||'-'}</td><td>${x.action||'-'}</td></tr>`);
+      h += '</table>';
+      document.getElementById('activityLog').innerHTML = h;
+    }
+  } catch (e) { console.log(e); }
+}
+
+// ═══════════════════════════════════════════════════════════
+// LANGUAGE
+// ═══════════════════════════════════════════════════════════
+async function loadLanguages() {
+  try {
+    const res = await fetch('/api/languages');
+    const d = await res.json();
+    const el = document.getElementById('langGrid');
+    const flags = {en: '🇬🇧', bn: '🇧🇩', hi: '🇮🇳', ar: '🇸🇦'};
+    if (d.ok && d.languages) {
+      el.innerHTML = d.languages.map(l => `
+        <div class="lang-card" onclick="changeLanguage('${l.code}')">
+          <div class="flag">${flags[l.code] || '🌐'}</div>
+          <div class="name">${l.name}</div>
+          <div class="code">${l.code.toUpperCase()}</div>
+        </div>
+      `).join('');
+    }
+  } catch (e) { console.log(e); }
+}
+
+async function changeLanguage(lang) {
+  await fetch('/api/set-language', {
+    method: 'POST', headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({lang})
+  });
+  location.reload();
+}
+
+// ═══════════════════════════════════════════════════════════
+// SETTINGS
+// ═══════════════════════════════════════════════════════════
+async function loadSettings() {
+  try {
+    const [s, w, m] = await Promise.all([
+      fetch('/api/settings/info').then(r => r.json()),
+      fetch('/api/whatsapp/config').then(r => r.json()).catch(() => ({})),
+      fetch('/api/mlm/stats').then(r => r.json()).catch(() => ({})),
+    ]);
+
+    if (s.ok) {
+      document.getElementById('settingsInfo').innerHTML = `
+        <p>Platform: ${s.system.platform}</p>
+        <p>Python: ${s.system.python}</p>
+        <p>Uptime: ${s.system.uptime}</p>
+      `;
+    }
+    if (w.ok) {
+      document.getElementById('whatsappConfig').innerHTML = `
+        <p>Number: ${w.config.admin_number}</p>
+        <p>Enabled: ${w.config.enabled}</p>
+      `;
+    }
+    if (m.total_users !== undefined) {
+      document.getElementById('mlmStats').innerHTML = `
+        <p>Total Users: ${m.total_users}</p>
+        <p>With Teams: ${m.users_with_teams}</p>
+        <p>With Rewards: ${m.users_with_reward}</p>
+      `;
+    }
+  } catch (e) { console.log(e); }
+}
+
+async function backupNow() {
+  const res = await fetch('/api/backup/now', {method: 'POST'}).catch(() => null);
+  if (res) {
+    const d = await res.json();
+    alert(d.ok ? '✅ Backup: ' + d.path : '❌ Failed');
+  } else {
+    alert('Backup endpoint not available — run from Desktop');
+  }
+}
+
+async function runDelivery() {
+  if (!confirm('Run auto-delivery now?')) return;
+  const res = await fetch('/api/delivery/run-now', {method: 'POST'});
+  const d = await res.json();
+  alert('Delivered: ' + (d.actions || []).join(', '));
+}
+
+async function saveWhatsApp() {
+  const num = prompt('WhatsApp number:', '8801681703406');
+  if (!num) return;
+  await fetch('/api/whatsapp/config', {
+    method: 'POST', headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({admin_number: num, enabled: true})
+  });
+  alert('✅ Saved');
+}
+
+async function testWhatsApp() {
+  const res = await fetch('/api/whatsapp/test', {method: 'POST'});
+  const d = await res.json();
+  alert(d.ok ? '✅ WhatsApp opened — check browser' : '❌ ' + d.error);
+}
+
+async function loadMLM() {
+  const res = await fetch('/api/mlm/stats');
+  const d = await res.json();
+  alert('MLM Stats:\n' + JSON.stringify(d, null, 2));
+}
+
+function openChart() {
+  window.open('/data/charts/diagnosis_system.html', '_blank');
+}
+
+// ═══════════════════════════════════════════════════════════
+// AUTO-LOAD
+// ═══════════════════════════════════════════════════════════
+loadOverview();
+setInterval(() => {
+  if (document.getElementById('panel-overview').classList.contains('active')) loadOverview();
+}, 30000);
+</script>
+</body>
+</html>

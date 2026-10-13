@@ -1,0 +1,30 @@
+﻿{
+  "lang_name": "हिन्दी",
+  "lang_code": "hi",
+  "nav": {
+    "overview": "अवलोकन",
+    "connect": "कनेक्ट",
+    "picture": "तस्वीर",
+    "autodetect": "ऑटो-डिटेक्ट",
+    "scanner": "स्कैनर",
+    "boardview": "बोर्डव्यू",
+    "result": "परिणाम",
+    "history": "इतिहास",
+    "users": "उपयोगकर्ता",
+    "comments": "टिप्पणियाँ",
+    "analytics": "विश्लेषिकी",
+    "language": "भाषा",
+    "settings": "सेटिंग्स"
+  },
+  "auth": {
+    "login": "लॉगिन",
+    "email": "ईमेल",
+    "password": "पासवर्ड",
+    "logout": "लॉगआउट"
+  },
+  "dashboard": {
+    "welcome": "स्वागत",
+    "search": "खोज",
+    "upload": "अपलोड"
+  }
+}

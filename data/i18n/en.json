@@ -1,0 +1,64 @@
+﻿{
+  "lang_name": "English",
+  "lang_code": "en",
+  "nav": {
+    "overview": "Overview",
+    "connect": "Connect",
+    "picture": "Picture",
+    "autodetect": "Auto-Detect",
+    "scanner": "Scanner",
+    "boardview": "BoardView",
+    "result": "Result",
+    "history": "History",
+    "users": "Users",
+    "comments": "Comments",
+    "analytics": "Analytics",
+    "language": "Language",
+    "settings": "Settings",
+    "calibration": "Calibration",
+    "warranty": "Warranty",
+    "reports": "Reports",
+    "admin": "Admin"
+  },
+  "auth": {
+    "login": "Login",
+    "email": "Email Address",
+    "password": "Password",
+    "logout": "Logout",
+    "register": "Register",
+    "verify": "Verify & Login",
+    "otp": "Verification Code"
+  },
+  "dashboard": {
+    "welcome": "Welcome",
+    "search": "Search",
+    "upload": "Upload",
+    "analyze": "Analyze",
+    "save": "Save",
+    "cancel": "Cancel",
+    "loading": "Loading...",
+    "success": "Success",
+    "error": "Error"
+  },
+  "brands": {
+    "title": "Brands",
+    "search": "Search brand",
+    "active": "Active",
+    "discontinued": "Discontinued",
+    "flashing_tool": "Flashing Tool"
+  },
+  "features": {
+    "total_models": "Total Models",
+    "clone_models": "Clone Models",
+    "brands": "Brands",
+    "users": "Users"
+  },
+  "messages": {
+    "welcome_msg": "Welcome to Mobile Service Master",
+    "free_trial": "6 months free trial",
+    "connected": "Connected successfully",
+    "disconnected": "Disconnected",
+    "saved": "Saved successfully",
+    "failed": "Operation failed"
+  }
+}

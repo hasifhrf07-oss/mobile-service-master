@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="bn">
 <head>
 <meta charset="UTF-8">
@@ -26,9 +26,19 @@ body{font-family:"Nirmala UI",Arial,sans-serif;background:linear-gradient(135deg
 .secondary-btn{display:block;width:100%;background:transparent;color:#89b4fa;border:2px solid #89b4fa;padding:14px 20px;border-radius:12px;font-size:14px;font-weight:700;text-decoration:none;text-align:center}
 .footer{background:#181825;padding:22px 30px;text-align:center;border-top:1px solid #313244}
 .footer p{font-size:12px;color:#6c7086}
+.lang-selector{position:fixed;top:20px;right:20px;display:flex;gap:6px;z-index:100}
+.lang-btn{background:rgba(30,30,46,.8);color:#89b4fa;border:1px solid #45475a;padding:8px 14px;border-radius:20px;cursor:pointer;font-size:12px;font-weight:bold;font-family:inherit;transition:.2s}
+.lang-btn:hover{background:#89b4fa;color:#1e1e2e}
+.lang-btn.active{background:#a6e3a1;color:#1e1e2e;border-color:#a6e3a1}
 </style>
 </head>
 <body>
+<div class="lang-selector">
+  <button class="lang-btn active" onclick="setLang('bn')">🇧🇩 বাংলা</button>
+  <button class="lang-btn" onclick="setLang('en')">🇬🇧 EN</button>
+  <button class="lang-btn" onclick="setLang('hi')">🇮🇳 हिन्दी</button>
+  <button class="lang-btn" onclick="setLang('ar')">🇸🇦 AR</button>
+</div>
 <div class="card">
   <div class="header">
     <div class="icon">🔧</div>
@@ -65,5 +75,27 @@ body{font-family:"Nirmala UI",Arial,sans-serif;background:linear-gradient(135deg
     <p>© 2026 Mobile Service Master — v3.1.0</p>
   </div>
 </div>
+<script>
+async function setLang(lang) {
+  await fetch('/api/set-language', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({lang: lang})
+  });
+  document.querySelectorAll('.lang-btn').forEach(b => b.classList.remove('active'));
+  event.target.classList.add('active');
+  location.reload();
+}
+
+// Highlight current language
+window.addEventListener('load', () => {
+  const currentLang = '{{ current_lang }}';
+  document.querySelectorAll('.lang-btn').forEach(b => {
+    if (b.textContent.includes(currentLang === 'bn' ? 'বাংলা' : currentLang === 'en' ? 'EN' : currentLang === 'hi' ? 'हिन्दी' : 'AR')) {
+      b.classList.add('active');
+    }
+  });
+});
+</script>
 </body>
 </html>

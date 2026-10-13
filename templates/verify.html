@@ -29,6 +29,22 @@ body{font-family:"Nirmala UI",Arial,sans-serif;background:linear-gradient(135deg
 </style>
 </head>
 <body>
+<div class="lang-mini" style="position:fixed;top:15px;right:15px;display:flex;gap:4px;z-index:100;">
+  <button onclick="setLang('bn')" style="background:rgba(0,0,0,.4);color:#fff;border:none;padding:6px 10px;border-radius:12px;cursor:pointer;font-size:11px;">🇧🇩</button>
+  <button onclick="setLang('en')" style="background:rgba(0,0,0,.4);color:#fff;border:none;padding:6px 10px;border-radius:12px;cursor:pointer;font-size:11px;">🇬🇧</button>
+  <button onclick="setLang('hi')" style="background:rgba(0,0,0,.4);color:#fff;border:none;padding:6px 10px;border-radius:12px;cursor:pointer;font-size:11px;">🇮🇳</button>
+  <button onclick="setLang('ar')" style="background:rgba(0,0,0,.4);color:#fff;border:none;padding:6px 10px;border-radius:12px;cursor:pointer;font-size:11px;">🇸🇦</button>
+</div>
+<script>
+async function setLang(l) {
+  await fetch('/api/set-language', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({lang: l})
+  });
+  location.reload();
+}
+</script>
 <div class="card">
 
   <div class="header">
@@ -157,3 +173,4 @@ console.log('[VERIFY PAGE] Loaded. Ready for OTP input.');
 
 </body>
 </html>
+
