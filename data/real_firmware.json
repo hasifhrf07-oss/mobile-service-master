@@ -1,0 +1,22 @@
+﻿{
+  "version": "1.0",
+  "updated": "2026-10-13",
+  "brands": {
+    "Samsung": {"official_url": "https://www.samsung.com/support/", "firmware_sources": [{"name": "SamMobile", "url": "https://www.sammobile.com/firmwares/"}], "flash_tools": ["Odin3", "Heimdall", "Chimera"], "common_issues": ["Boot loop", "FRP lock", "eMMC failure"]},
+    "Xiaomi": {"official_url": "https://www.mi.com/global/support/", "firmware_sources": [{"name": "XiaomiFirmwareUpdater", "url": "https://xiaomifirmwareupdater.com/"}], "flash_tools": ["Mi Flash Tool", "XiaoMiTool V2"], "common_issues": ["Boot loop", "MI account lock"]},
+    "Oppo": {"official_url": "https://www.oppo.com/en/support/", "firmware_sources": [{"name": "OppoFirmware", "url": "https://oppofirmware.com/"}], "flash_tools": ["MSM Download Tool"], "common_issues": ["Boot loop", "Pattern lock"]},
+    "Vivo": {"official_url": "https://www.vivo.com/en/support/", "firmware_sources": [{"name": "VivoFirmware", "url": "https://vivofirmware.com/"}], "flash_tools": ["AFTool"], "common_issues": ["Boot loop", "FRP lock"]},
+    "Realme": {"official_url": "https://www.realme.com/in/support", "firmware_sources": [{"name": "RealmeUpdater", "url": "https://realmeupdater.com/"}], "flash_tools": ["Realme Flash Tool"], "common_issues": ["Boot loop", "Fastboot loop"]},
+    "OnePlus": {"official_url": "https://www.oneplus.com/support", "firmware_sources": [{"name": "OxygenOS", "url": "https://oxygenos.oneplus.net/"}], "flash_tools": ["MSM Download Tool"], "common_issues": ["Boot loop"]},
+    "Google Pixel": {"official_url": "https://developers.google.com/android/images", "firmware_sources": [{"name": "Google Factory Images", "url": "https://developers.google.com/android/images"}], "flash_tools": ["Android Flash Tool"], "common_issues": ["Boot loop"]},
+    "Huawei": {"official_url": "https://consumer.huawei.com/en/support/", "firmware_sources": [{"name": "HiSuite", "url": "https://consumer.huawei.com/en/support/hisuite/"}], "flash_tools": ["HiSuite"], "common_issues": ["Boot loop", "Huawei ID lock"]},
+    "Infinix": {"official_url": "https://www.infinixmobility.com/support/", "firmware_sources": [{"name": "InfinixFirmware", "url": "https://infinixfirmware.com/"}], "flash_tools": ["SP Flash Tool"], "common_issues": ["Boot loop", "Dead boot"]},
+    "Tecno": {"official_url": "https://www.tecno-mobile.com/support/", "firmware_sources": [{"name": "TecnoFirmware", "url": "https://tecnofirmware.com/"}], "flash_tools": ["SP Flash Tool"], "common_issues": ["Boot loop", "FRP"]},
+    "Symphony": {"official_url": "https://www.symphony-mobile.com/", "firmware_sources": [{"name": "Symphony Service", "url": "https://symphony-mobile.com/service-center/"}], "flash_tools": ["SP Flash Tool"], "common_issues": ["Boot loop", "Dead boot"]},
+    "Walton": {"official_url": "https://waltonbd.com/", "firmware_sources": [{"name": "Walton Service", "url": "https://waltonbd.com/service-center/"}], "flash_tools": ["SP Flash Tool"], "common_issues": ["Boot loop"]},
+    "Nokia": {"official_url": "https://www.nokia.com/phones/en_int/support", "firmware_sources": [{"name": "Nokia Recovery", "url": "https://www.nokia.com/phones/en_int/support"}], "flash_tools": ["Nokia Software Recovery Tool"], "common_issues": ["Boot loop"]},
+    "Motorola": {"official_url": "https://www.motorola.com/we/rescue-and-smart-assistant", "firmware_sources": [{"name": "Motorola RSA", "url": "https://www.motorola.com/we/rescue-and-smart-assistant"}], "flash_tools": ["Rescue and Smart Assistant"], "common_issues": ["Boot loop"]},
+    "Sony": {"official_url": "https://www.sony.com/electronics/support", "firmware_sources": [{"name": "Xperia Companion", "url": "https://www.sony.com/electronics/support"}], "flash_tools": ["Xperia Companion"], "common_issues": ["Boot loop"]},
+    "Asus": {"official_url": "https://www.asus.com/support/", "firmware_sources": [{"name": "Asus Support", "url": "https://www.asus.com/support/"}], "flash_tools": ["ASUS Flash Tool"], "common_issues": ["Boot loop"]}
+  }
+}

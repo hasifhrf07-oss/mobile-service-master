@@ -1784,6 +1784,169 @@ def api_onboarding_stats():
 
 
 
+
+
+# ═════════════════════════════════════════════════════════
+# ALL MASTER ROUTES (ALL_MASTER_ROUTES_ADDED)
+# ═════════════════════════════════════════════════════════
+
+# ── Real Tools ──
+@app.route("/api/tools/real-brands")
+@login_required
+def api_real_brands():
+    from core.real_tools_manager import list_all_brands
+    return jsonify({"ok": True, "brands": list_all_brands()})
+
+
+@app.route("/api/tools/real-guide", methods=["POST"])
+@login_required
+def api_real_guide():
+    from core.real_tools_manager import get_flash_guide
+    d = request.get_json() or {}
+    return jsonify(get_flash_guide(d.get("brand", ""), d.get("model", "")))
+
+
+@app.route("/api/tools/free")
+@login_required
+def api_tools_free():
+    from core.real_tools_manager import get_free_tools
+    return jsonify({"ok": True, "tools": get_free_tools()})
+
+
+@app.route("/api/tools/paid")
+@login_required
+def api_tools_paid():
+    from core.real_tools_manager import get_paid_tools
+    return jsonify({"ok": True, "tools": get_paid_tools()})
+
+
+@app.route("/api/tools/full-guide", methods=["POST"])
+@login_required
+def api_full_guide():
+    from core.real_tools_manager import get_full_service_guide
+    d = request.get_json() or {}
+    return jsonify(get_full_service_guide(d.get("brand",""), d.get("model",""), d.get("issue_type","boot_loop")))
+
+
+# ── Security ──
+@app.route("/api/security/status")
+@admin_required
+def api_security_status():
+    from core.app_secret import get_security_status
+    from core.secure_connect import get_connect_status
+    return jsonify({"ok": True, "app": get_security_status(), "connect": get_connect_status()})
+
+
+@app.route("/api/security/devices")
+@admin_required
+def api_security_devices():
+    from core.app_secret import list_known_devices
+    return jsonify({"ok": True, "devices": list_known_devices()})
+
+
+@app.route("/api/security/attempts")
+@admin_required
+def api_security_attempts():
+    from core.secure_connect import get_recent_attempts
+    return jsonify({"ok": True, "attempts": get_recent_attempts(50)})
+
+
+# ── Secure Connect ──
+@app.route("/api/connect/initiate", methods=["POST"])
+@login_required
+def api_connect_initiate():
+    from core.secure_connect import initiate_handshake
+    from core.adb_lifecycle import detect_device
+    det = detect_device()
+    if not det.get("ok"):
+        return jsonify({"ok": False, "detect": det})
+    return jsonify(initiate_handshake(det.get("info", {}), session.get("email", "")))
+
+
+@app.route("/api/connect/complete", methods=["POST"])
+@login_required
+def api_connect_complete():
+    from core.secure_connect import complete_handshake
+    d = request.get_json() or {}
+    return jsonify(complete_handshake(d.get("fingerprint",""), d.get("challenge_response",""), d.get("session_token","")))
+
+
+# ── ADB Lifecycle ──
+@app.route("/api/adb/status")
+@login_required
+def api_adb_status():
+    from core.adb_lifecycle import get_lifecycle_status, detect_device
+    return jsonify({"ok": True, "lifecycle": get_lifecycle_status(), "device": detect_device()})
+
+
+@app.route("/api/adb/install", methods=["POST"])
+@login_required
+def api_adb_install():
+    from core.adb_lifecycle import install_adb_auto
+    return jsonify(install_adb_auto())
+
+
+@app.route("/api/adb/connect", methods=["POST"])
+@login_required
+def api_adb_connect():
+    from core.adb_lifecycle import auto_connect_workflow
+    return jsonify(auto_connect_workflow())
+
+
+@app.route("/api/adb/disconnect", methods=["POST"])
+@login_required
+def api_adb_disconnect():
+    from core.adb_lifecycle import auto_disconnect_workflow
+    return jsonify(auto_disconnect_workflow())
+
+
+@app.route("/api/adb/detect")
+@login_required
+def api_adb_detect():
+    from core.adb_lifecycle import detect_device
+    return jsonify(detect_device())
+
+
+# ── Tools Status ──
+@app.route("/api/tools/status")
+@admin_required
+def api_tools_status():
+    from core.tool_manager import check_installed
+    return jsonify({"ok": True, "tools": check_installed()})
+
+
+@app.route("/api/tools/install-all", methods=["POST"])
+@admin_required
+def api_tools_install_all():
+    from core.tool_manager import install_all
+    return jsonify({"ok": True, "results": install_all()})
+
+
+# ── Firmware ──
+@app.route("/api/firmware/info", methods=["POST"])
+@login_required
+def api_firmware_info():
+    from core.firmware_finder import get_firmware_info
+    d = request.get_json() or {}
+    return jsonify(get_firmware_info(d.get("brand",""), d.get("model","")))
+
+
+@app.route("/api/firmware/steps", methods=["POST"])
+@login_required
+def api_firmware_steps():
+    from core.firmware_finder import get_download_steps
+    d = request.get_json() or {}
+    return jsonify(get_download_steps(d.get("brand",""), d.get("model",""), d.get("mode","fastboot")))
+
+
+@app.route("/api/firmware/brands")
+@login_required
+def api_firmware_brands():
+    from core.firmware_finder import get_all_brands
+    return jsonify({"ok": True, "brands": get_all_brands()})
+
+
+
 if __name__ == "__main__":
     print()
     print("=" * 62)
@@ -1800,6 +1963,7 @@ if __name__ == "__main__":
 
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port, debug=False, threaded=True)
+
 
 
 
