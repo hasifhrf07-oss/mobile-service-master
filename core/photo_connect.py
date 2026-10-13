@@ -1,7 +1,6 @@
-﻿"""Photo Connect Engine — Photo → Analysis → Connection Status"""
+"""Photo Connect Engine"""
 import os
 from datetime import datetime
-
 
 EXPECTED_RAILS = {
     "vbat":     {"min": 3.5, "max": 4.3, "typical": 3.8, "label": "VBAT"},
@@ -15,7 +14,6 @@ EXPECTED_RAILS = {
 
 
 def get_connect_status():
-    """Photo connect feature status"""
     return {
         "enabled": True,
         "method": "OCR + Database Matching",
@@ -25,18 +23,7 @@ def get_connect_status():
     }
 
 
-def extract_readings_from_photos(photo_paths):
-    """Extract readings from 4 photos"""
-    try:
-        from core.meter_engine.engine import analyze_meter_photos
-        analysis = analyze_meter_photos(photo_paths)
-        return analysis
-    except ImportError:
-        return {"ok": True, "readings": list(photo_paths.keys())}
-
-
 def detect_chipset_from_text(text):
-    """Detect chipset family"""
     t = (text or "").lower()
     if any(k in t for k in ["exynos", "samsung"]):
         return "exynos"
@@ -48,30 +35,24 @@ def detect_chipset_from_text(text):
 
 
 def photo_connect(photo_paths, brand_text=""):
-    """
-    Main photo-connect function.
-    Returns connected status + confidence + matches
-    """
     started = datetime.now()
 
-    # Analyze photos
-    analysis = extract_readings_from_photos(photo_paths)
+    try:
+        from core.meter_engine.engine import analyze_meter_photos
+        analysis = analyze_meter_photos(photo_paths)
+    except Exception:
+        analysis = {"ok": True, "readings": []}
 
-    # Extract readings
     readings = analysis.get("readings", [])
     if isinstance(readings, dict):
-        readings = [v for v in readings.values() if isinstance(v, dict)]
+        readings = list(readings.values())
 
-    # Detect chipset
-    chipset = detect_chipset_from_text(brand_text)
-    if chipset == "generic":
-        brand = analysis.get("brand", "")
-        chipset = detect_chipset_from_text(brand)
+    chipset = detect_chipset_from_text(brand_text or analysis.get("brand", ""))
 
-    # Match readings
-    matches = []
-    mismatches = []
+    matches, mismatches = [], []
     for r in readings:
+        if not isinstance(r, dict):
+            continue
         rail = (r.get("rail") or "").lower()
         v = r.get("value")
         if not rail or v is None:
@@ -79,30 +60,23 @@ def photo_connect(photo_paths, brand_text=""):
         if rail in EXPECTED_RAILS:
             info = EXPECTED_RAILS[rail]
             if info["min"] <= v <= info["max"]:
-                matches.append({"rail": rail, "value": v, "expected": f"{info['min']}-{info['max']}V", "status": "match"})
+                matches.append({"rail": rail, "value": v, "status": "match"})
             else:
-                mismatches.append({"rail": rail, "value": v, "expected": f"{info['min']}-{info['max']}V", "status": "mismatch"})
+                mismatches.append({"rail": rail, "value": v, "status": "mismatch"})
 
     total = len(matches) + len(mismatches)
     score = int((len(matches) / total) * 100) if total else 0
-
-    if score >= 80:
-        status, connected = "CONNECTED", True
-    elif score >= 50:
-        status, connected = "PARTIAL", False
-    else:
-        status, connected = "FAILED", False
+    status = "CONNECTED" if score >= 80 else ("PARTIAL" if score >= 50 else "FAILED")
 
     return {
         "ok": True,
-        "connected": connected,
+        "connected": score >= 80,
         "status": status,
         "confidence": score,
         "chipset": chipset,
         "matches": matches,
         "mismatches": mismatches,
-        "raw_analysis": analysis,
         "started_at": started.isoformat(timespec="seconds"),
         "finished_at": datetime.now().isoformat(timespec="seconds"),
-        "message": f"{'✅ Connected' if connected else '⚠️ ' + status} (Confidence: {score}%)",
+        "message": f"{'OK' if score >= 80 else status} ({score}%)",
     }
