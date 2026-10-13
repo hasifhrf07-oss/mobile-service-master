@@ -1,0 +1,12 @@
+﻿{
+  "version": "1.0",
+  "updated": "2026-10-13",
+  "total_brands": 65,
+  "brands": [
+    {"name": "Apple", "status": "active", "country": "USA", "series": ["iPhone", "iPhone SE", "iPhone Pro"], "flashing_tool": "iTunes / Finder"},
+    {"name": "Samsung", "status": "active", "country": "South Korea", "series": ["Galaxy S", "Galaxy A", "Galaxy M", "Galaxy Z"], "flashing_tool": "Odin"},
+    {"name": "Xiaomi", "status": "active", "country": "China", "series": ["Redmi Note", "Redmi", "Poco", "Mi"], "flashing_tool": "Mi Flash Tool"},
+    {"name": "Oppo", "status": "active", "country": "China", "series": ["A", "F", "Reno", "Find"], "flashing_tool": "MSM Download Tool"},
+    {"name": "Vivo", "status": "active", "country": "China", "series": ["Y", "V", "X"], "flashing_tool": "AFTool"}
+  ]
+}
