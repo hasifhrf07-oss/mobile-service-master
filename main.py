@@ -1,42 +1,43 @@
-# Mobile Service Master v3.0 - Entry Point
-
+﻿# Mobile Service Master - Main Entry Point
 import sys
 import os
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-# Ensure project root is on sys.path
-ROOT = os.path.dirname(os.path.abspath(__file__))
-if ROOT not in sys.path:
-    sys.path.insert(0, ROOT)
+from PyQt6.QtWidgets import QApplication, QMainWindow, QTabWidget, QWidget, QVBoxLayout, QLabel
+from PyQt6.QtCore import Qt
 
-# Change working directory to project root
-os.chdir(ROOT)
+# Core imports
+try:
+    from ui.tab_b2b_settings import B2BSettingsTab
+    HAS_B2B = True
+except ImportError as e:
+    HAS_B2B = False
+    print(f"[WARN] B2B tab not loaded: {e}")
 
-from PyQt6.QtWidgets import QApplication, QMessageBox
-from ui.main_window import MainWindow
-from database.init_db import init as init_db
+class MainWindow(QMainWindow):
+    def __init__(self):
+        super().__init__()
+        self.setWindowTitle("Mobile Service Master v3.1")
+        self.setGeometry(100, 100, 1200, 800)
+        self.init_ui()
 
+    def init_ui(self):
+        tabs = QTabWidget()
 
-def main():
-    app = QApplication(sys.argv)
-    app.setApplicationName("Mobile Service Master")
-    app.setApplicationVersion("3.0")
+        # B2B Settings Tab
+        if HAS_B2B:
+            tabs.addTab(B2BSettingsTab(), "B2B API Settings")
+        else:
+            placeholder = QWidget()
+            layout = QVBoxLayout()
+            layout.addWidget(QLabel("B2B Settings Tab not loaded"))
+            placeholder.setLayout(layout)
+            tabs.addTab(placeholder, "B2B API Settings")
 
-    db_path = os.path.join(ROOT, "database", "devices.db")
-
-    if not os.path.exists(db_path):
-        init_db()
-        QMessageBox.information(
-            None, "প্রথমবার চালু",
-            "ডেটাবেস তৈরি হয়েছে।\n\n"
-            "এখন চালাও:\n"
-            "  python database/seed_10000.py"
-        )
-        return
-
-    win = MainWindow(app)
-    win.show()
-    sys.exit(app.exec())
-
+        self.setCentralWidget(tabs)
 
 if __name__ == "__main__":
-    main()
+    app = QApplication(sys.argv)
+    window = MainWindow()
+    window.show()
+    sys.exit(app.exec())

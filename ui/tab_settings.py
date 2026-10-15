@@ -1,13 +1,21 @@
-"""Settings Tab — with System info"""
+"""Settings Tab — with System info + B2B API Settings"""
 
 from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout,
                               QPushButton, QLabel, QLineEdit, QTextEdit,
                               QTableWidget, QTableWidgetItem,
                               QMessageBox, QGroupBox, QFormLayout,
-                              QScrollArea, QFrame, QTabWidget)
+                              QScrollArea, QFrame, QTabWidget, QComboBox)
 from PyQt6.QtCore import Qt
 from data import db
 import os
+
+# B2B API Settings Import
+try:
+    from settings import PAID_TOOLS, add_api_key, is_tool_enabled
+except ImportError:
+    PAID_TOOLS = {}
+    def add_api_key(tool, key): return False
+    def is_tool_enabled(tool): return False
 
 
 class SettingsTab(QWidget):
@@ -30,12 +38,13 @@ class SettingsTab(QWidget):
         self.sub_tabs = QTabWidget()
         self.sub_tabs.addTab(self._models_tab(), "📱 Models")
         self.sub_tabs.addTab(self._system_tab(), "🔧 System")
+        self.sub_tabs.addTab(self._b2b_api_tab(), "🔑 B2B API")   # NOTUN TAB
         outer.addWidget(self.sub_tabs, 1)
 
         self.setLayout(outer)
 
     # ═════════════════════════════════════════════════════════
-    # Models Tab
+    # Models Tab (Tomar Purono)
     # ═════════════════════════════════════════════════════════
 
     def _models_tab(self):
@@ -48,7 +57,6 @@ class SettingsTab(QWidget):
         self.lbl_stats.setObjectName("subtitle")
         layout.addWidget(self.lbl_stats)
 
-        # Quick actions bar (fixed)
         top_btn_bar = QFrame()
         top_btn_bar.setStyleSheet(
             "QFrame { background-color: #252536; "
@@ -79,7 +87,6 @@ class SettingsTab(QWidget):
         top_btn_layout.addStretch()
         layout.addWidget(top_btn_bar)
 
-        # Scrollable content
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
         scroll.setHorizontalScrollBarPolicy(
@@ -91,7 +98,6 @@ class SettingsTab(QWidget):
         inner.setContentsMargins(4, 4, 4, 4)
         inner.setSpacing(6)
 
-        # Add Model Form
         add_group = QGroupBox("➕ নতুন মডেল যোগ করো")
         form = QFormLayout()
         form.setSpacing(6)
@@ -122,7 +128,6 @@ class SettingsTab(QWidget):
         add_group.setLayout(form)
         inner.addWidget(add_group)
 
-        # In-form buttons
         in_form_btn = QHBoxLayout()
         btn_save_form = QPushButton("💾 সেভ করো (this form)")
         btn_save_form.setObjectName("primary")
@@ -135,7 +140,6 @@ class SettingsTab(QWidget):
         in_form_btn.addStretch()
         inner.addLayout(in_form_btn)
 
-        # Search & Table
         search_group = QGroupBox("🔍 মডেল ব্রাউজ")
         search_layout = QVBoxLayout()
         search_layout.setContentsMargins(6, 6, 6, 6)
@@ -171,7 +175,7 @@ class SettingsTab(QWidget):
         return w
 
     # ═════════════════════════════════════════════════════════
-    # System Tab (DB stats, BoardView paths)
+    # System Tab (Tomar Purono)
     # ═════════════════════════════════════════════════════════
 
     def _system_tab(self):
@@ -180,7 +184,6 @@ class SettingsTab(QWidget):
         layout.setContentsMargins(4, 4, 4, 4)
         layout.setSpacing(6)
 
-        # DB Stats
         db_group = QGroupBox("📊 Database Statistics")
         db_layout = QVBoxLayout()
         db_layout.setContentsMargins(6, 6, 6, 6)
@@ -191,7 +194,6 @@ class SettingsTab(QWidget):
         db_group.setLayout(db_layout)
         layout.addWidget(db_group)
 
-        # Folder paths
         paths_group = QGroupBox("📁 Folder Paths")
         paths_layout = QVBoxLayout()
         paths_layout.setContentsMargins(6, 6, 6, 6)
@@ -203,7 +205,6 @@ class SettingsTab(QWidget):
         paths_group.setLayout(paths_layout)
         layout.addWidget(paths_group)
 
-        # Buttons
         btn_row = QHBoxLayout()
         btn_refresh = QPushButton("🔄 Refresh Info")
         btn_refresh.setObjectName("primary")
@@ -223,14 +224,11 @@ class SettingsTab(QWidget):
 
         layout.addStretch()
 
-        # Load initial
         self._refresh_system()
         return w
 
     def _refresh_system(self):
-        """System stats + folder info"""
         try:
-            # Stats
             total = db.total_count()
             clones = db.clone_count()
             ver = db.get_meta("db_version", "?")
@@ -246,7 +244,6 @@ class SettingsTab(QWidget):
             self.out_sys_stats.append(f"Last Update  : {str(last)[:19]}")
             self.out_sys_stats.append("")
 
-            # Scanner stats
             try:
                 from data.scanner_db import dashboard_stats
                 s = dashboard_stats()
@@ -261,7 +258,6 @@ class SettingsTab(QWidget):
 
             self.out_sys_stats.append("=" * 50)
 
-            # Paths
             root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
             self.out_paths.clear()
@@ -298,7 +294,195 @@ class SettingsTab(QWidget):
             pass
 
     # ═════════════════════════════════════════════════════════
-    # Model Actions
+    # NOTUN TAB: B2B API Settings
+    # ═════════════════════════════════════════════════════════
+
+    def _b2b_api_tab(self):
+        """Paid Tools API Key Add korar UI"""
+        w = QWidget()
+        layout = QVBoxLayout(w)
+        layout.setContentsMargins(4, 4, 4, 4)
+        layout.setSpacing(6)
+
+        # Title
+        title = QLabel("🔑 B2B Paid Tools API Settings")
+        title.setStyleSheet(
+            "font-size: 16px; font-weight: bold; color: #89b4fa;"
+        )
+        layout.addWidget(title)
+
+        # Info Label
+        info = QLabel(
+            "API key add korle tool automatically enable hobe. "
+            "API key na thakle tool kaj korbe na."
+        )
+        info.setStyleSheet("color: #a6adc8; font-size: 12px;")
+        info.setWordWrap(True)
+        layout.addWidget(info)
+
+        # Tool Select Group
+        tool_group = QGroupBox("🛠️ Tool Select Koro")
+        tool_layout = QVBoxLayout()
+        tool_layout.setContentsMargins(6, 6, 6, 6)
+
+        self.b2b_tool_combo = QComboBox()
+        for tool_name, tool_info in PAID_TOOLS.items():
+            status = "✅ Enabled" if tool_info.get("enabled") else "❌ Disabled"
+            self.b2b_tool_combo.addItem(
+                f"{tool_info['name']} — {status}", tool_name
+            )
+        self.b2b_tool_combo.currentIndexChanged.connect(self._on_tool_change)
+        tool_layout.addWidget(QLabel("Tool:"))
+        tool_layout.addWidget(self.b2b_tool_combo)
+
+        # Tool Description
+        self.b2b_desc_label = QLabel("")
+        self.b2b_desc_label.setStyleSheet("color: #a6adc8; font-size: 11px;")
+        self.b2b_desc_label.setWordWrap(True)
+        tool_layout.addWidget(self.b2b_desc_label)
+
+        # API Key Input
+        self.b2b_api_input = QLineEdit()
+        self.b2b_api_input.setPlaceholderText("API Key ekhane paste koro...")
+        self.b2b_api_input.setEchoMode(QLineEdit.EchoMode.Password)
+        tool_layout.addWidget(QLabel("API Key:"))
+        tool_layout.addWidget(self.b2b_api_input)
+
+        # Show/Hide API Key
+        show_row = QHBoxLayout()
+        self.b2b_show_key = QPushButton("👁️ Show")
+        self.b2b_show_key.setCheckable(True)
+        self.b2b_show_key.toggled.connect(self._toggle_api_visibility)
+        show_row.addWidget(self.b2b_show_key)
+        show_row.addStretch()
+        tool_layout.addLayout(show_row)
+
+        tool_group.setLayout(tool_layout)
+        layout.addWidget(tool_group)
+
+        # Save Button
+        btn_row = QHBoxLayout()
+        btn_save_api = QPushButton("💾 API Key Save Koro")
+        btn_save_api.setObjectName("primary")
+        btn_save_api.setMinimumHeight(35)
+        btn_save_api.clicked.connect(self.save_b2b_api_key)
+        btn_row.addWidget(btn_save_api)
+
+        btn_clear_api = QPushButton("🗑️ Clear")
+        btn_clear_api.setMinimumHeight(35)
+        btn_clear_api.clicked.connect(lambda: self.b2b_api_input.clear())
+        btn_row.addWidget(btn_clear_api)
+
+        btn_row.addStretch()
+        layout.addLayout(btn_row)
+
+        # Status Table
+        status_group = QGroupBox("📊 API Status")
+        status_layout = QVBoxLayout()
+        status_layout.setContentsMargins(6, 6, 6, 6)
+
+        self.b2b_status_table = QTableWidget()
+        self.b2b_status_table.setColumnCount(4)
+        self.b2b_status_table.setHorizontalHeaderLabels(
+            ["Tool", "Status", "API Key", "API URL"]
+        )
+        self.b2b_status_table.setMinimumHeight(200)
+        status_layout.addWidget(self.b2b_status_table)
+        status_group.setLayout(status_layout)
+        layout.addWidget(status_group)
+
+        # Refresh Button
+        btn_refresh_status = QPushButton("🔄 Refresh Status")
+        btn_refresh_status.clicked.connect(self.load_b2b_status)
+        layout.addWidget(btn_refresh_status)
+
+        layout.addStretch()
+
+        # Load initial
+        self._on_tool_change()
+        self.load_b2b_status()
+
+        return w
+
+    def _on_tool_change(self):
+        """Tool change hole description update hobe"""
+        tool_name = self.b2b_tool_combo.currentData()
+        if tool_name and tool_name in PAID_TOOLS:
+            info = PAID_TOOLS[tool_name]
+            self.b2b_desc_label.setText(
+                f"📝 {info.get('description', 'No description')}"
+            )
+            # Jodi API key already thake, dekhabe
+            if info.get("api_key"):
+                self.b2b_api_input.setText(info["api_key"])
+            else:
+                self.b2b_api_input.clear()
+
+    def _toggle_api_visibility(self, checked):
+        """API key show/hide korar function"""
+        if checked:
+            self.b2b_api_input.setEchoMode(QLineEdit.EchoMode.Normal)
+            self.b2b_show_key.setText("🙈 Hide")
+        else:
+            self.b2b_api_input.setEchoMode(QLineEdit.EchoMode.Password)
+            self.b2b_show_key.setText("👁️ Show")
+
+    def save_b2b_api_key(self):
+        """API key save korar function"""
+        tool_name = self.b2b_tool_combo.currentData()
+        api_key = self.b2b_api_input.text().strip()
+
+        if not api_key:
+            QMessageBox.warning(
+                self, "⚠️ Warning",
+                "API key khali rakha jabe na!"
+            )
+            return
+
+        if add_api_key(tool_name, api_key):
+            QMessageBox.information(
+                self, "✅ Success",
+                f"{tool_name} API key added!\n"
+                f"Tool ekhon enabled."
+            )
+            self.load_b2b_status()
+            # Combo box update
+            idx = self.b2b_tool_combo.currentIndex()
+            self.b2b_tool_combo.setItemText(
+                idx,
+                f"{PAID_TOOLS[tool_name]['name']} — ✅ Enabled"
+            )
+        else:
+            QMessageBox.warning(
+                self, "❌ Error",
+                f"{tool_name} API key add korte problem hoyeche."
+            )
+
+    def load_b2b_status(self):
+        """B2B Tool status table load korar function"""
+        try:
+            self.b2b_status_table.setRowCount(len(PAID_TOOLS))
+            for i, (tool_name, info) in enumerate(PAID_TOOLS.items()):
+                self.b2b_status_table.setItem(
+                    i, 0, QTableWidgetItem(info["name"])
+                )
+                status = "✅ Enabled" if info.get("enabled") else "❌ Disabled"
+                self.b2b_status_table.setItem(
+                    i, 1, QTableWidgetItem(status)
+                )
+                key_display = "✅ Set" if info.get("api_key") else "❌ Not Set"
+                self.b2b_status_table.setItem(
+                    i, 2, QTableWidgetItem(key_display)
+                )
+                self.b2b_status_table.setItem(
+                    i, 3, QTableWidgetItem(info.get("api_url", ""))
+                )
+            self.b2b_status_table.resizeColumnsToContents()
+        except Exception as e:
+            print(f"B2B Status Load Failed: {e}")
+
+    # ═════════════════════════════════════════════════════════
+    # Model Actions (Tomar Purono)
     # ═════════════════════════════════════════════════════════
 
     def update_stats(self):

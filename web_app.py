@@ -1,4 +1,5 @@
-﻿# Mobile Service Master - Full Web App v3.1 (Admin + Encryption + Meter + Comment + Subscription)
+﻿# Mobile Service Master - Full Web App v3.1 (FINAL - Expert Fixed)
+# Admin + Encryption + Meter + Comment + Subscription + MLM + WhatsApp + Auto-Connect
 
 from flask import (Flask, render_template, request, jsonify,
                    session, redirect, url_for)
@@ -42,6 +43,13 @@ except ImportError:
 
 # DB
 from data import db
+
+
+# ============================================================
+# START TIME (age define korte hobe)
+# ============================================================
+
+START_TIME = time.time()
 
 
 # ============================================================
@@ -93,7 +101,6 @@ def _allowed(name):
 
 USERS_FILE = os.path.join(os.path.dirname(__file__), "users.json")
 
-# ADMIN EMAIL — can be overridden by env var (for Render deployment)
 ADMIN_EMAIL = os.environ.get("ADMIN_EMAIL", "admin.mobile.servicemaster@gmail.com")
 
 
@@ -153,7 +160,6 @@ def admin_required(f):
 # ============================================================
 
 def get_current_role():
-    """Session থেকে current user-এর role"""
     email = session.get("email")
     if not email:
         return None
@@ -190,7 +196,6 @@ def login_page():
 
     users = load_users()
 
-    # New user - auto register + OTP
     if email not in users:
         otp = generate_otp()
         users[email] = {
@@ -206,7 +211,6 @@ def login_page():
         }
         save_users(users)
 
-        # Register user_role in DB (pending status)
         try:
             db.register_user_role(email, role="pending")
             db.log_activity(
@@ -233,7 +237,6 @@ def login_page():
             "dev_otp": otp,
         })
 
-    # Existing user
     user = users[email]
 
     if user["password_hash"] != hash_password(password):
@@ -250,7 +253,6 @@ def login_page():
 
         return jsonify({"ok": True, "action": "dashboard"})
 
-    # Existing user but not verified → new OTP
     otp = generate_otp()
     user["otp"] = otp
     user["otp_created"] = datetime.now().isoformat()
@@ -302,7 +304,6 @@ def verify_page():
     user["last_login"] = datetime.now().isoformat()
     save_users(users)
 
-    # Ensure user_role exists
     try:
         if not db.get_user_role(email):
             db.register_user_role(email, role="pending")
@@ -336,7 +337,6 @@ def logout():
 @app.route("/dashboard-v2")
 @login_required
 def dashboard_v2():
-    """Role-aware dashboard with decoy tabs"""
     email = session.get("email", "")
     users = load_users()
     user = users.get(email, {})
@@ -366,14 +366,12 @@ def dashboard_v2():
 @app.route("/dashboard")
 @login_required
 def dashboard():
-    """Legacy — redirect to v2"""
     return redirect(url_for("dashboard_v2"))
 
 
 @app.route("/me/role")
 @login_required
 def me_role():
-    """Current user role info"""
     email = session.get("email")
     role = get_current_role()
     role_info = db.get_user_role(email) or {}
@@ -973,6 +971,16 @@ def health():
     })
 
 
+@app.route("/healthz")
+def healthz():
+    return jsonify({
+        "ok": True,
+        "status": "running",
+        "version": "3.1.0",
+        "timestamp": datetime.now().isoformat(timespec="seconds"),
+    })
+
+
 # ============================================================
 # METER PHOTO UPLOAD & ANALYSIS
 # ============================================================
@@ -980,7 +988,6 @@ def health():
 @app.route("/api/upload-meter-photos", methods=["POST"])
 @login_required
 def api_upload_meter_photos():
-    """৪টি ছবি আপলোড + analysis start"""
     job_id = str(uuid.uuid4())
     job_folder = os.path.join(UPLOAD_DIR, job_id)
     os.makedirs(job_folder, exist_ok=True)
@@ -999,7 +1006,6 @@ def api_upload_meter_photos():
     if not photo_paths:
         return jsonify({"ok": False, "message": "কোনো বৈধ ছবি নেই"}), 400
 
-    # Manual values (optional)
     manual_values = {}
     for slot in slots:
         mv = request.form.get(f"manual_{slot}")
@@ -1009,11 +1015,9 @@ def api_upload_meter_photos():
             except ValueError:
                 pass
 
-    # Run analysis
     analysis = analyze_meter_photos(photo_paths, manual_values)
     analysis["job_id"] = job_id
 
-    # Save to DB
     db.save_meter_job(
         job_id=job_id,
         user_email=session.get("email"),
@@ -1045,7 +1049,6 @@ def api_upload_meter_photos():
 @app.route("/api/meter-job/<job_id>")
 @login_required
 def api_meter_job(job_id):
-    """Job result fetch"""
     job = db.get_meter_job(job_id)
     if not job:
         return jsonify({"ok": False, "message": "Job পাওয়া যায়নি"}), 404
@@ -1145,8 +1148,7 @@ def api_admin_meter_jobs():
     return jsonify({
         "ok": True,
         "jobs": db.list_meter_jobs(limit=200),
-
-            })
+    })
 
 
 # ============================================================
@@ -1161,20 +1163,6 @@ def api_subscription_status():
         return jsonify({"ok": False}), 401
     status = check_sub(email)
     return jsonify({"ok": True, "subscription": status})
-
-
-# ============================================================
-# HEALTH CHECK (for UptimeRobot)
-# ============================================================
-
-@app.route("/healthz")
-def healthz():
-    return jsonify({
-        "ok": True,
-        "status": "running",
-        "version": "3.1.0",
-        "timestamp": datetime.now().isoformat(timespec="seconds"),
-    })
 
 
 # ============================================================
@@ -1255,9 +1243,6 @@ def api_admin_activity():
 # AUTO-APPROVE SCHEDULER
 # ============================================================
 
-START_TIME = time.time()
-
-
 def keep_alive_task():
     while True:
         time.sleep(3600)
@@ -1324,19 +1309,12 @@ def api_auto_approve_now():
 
 
 # ============================================================
-# Run
-# ============================================================
-
-
-
-# ═════════════════════════════════════════════════════════
 # API — Version Check (Update System)
-# ═════════════════════════════════════════════════════════
+# ============================================================
 
 @app.route("/api/version/check")
 @login_required
 def api_version_check():
-    """Update system version check"""
     import json as _json
     current = "3.1.0"
     latest = current
@@ -1364,38 +1342,31 @@ def api_version_check():
     })
 
 
-
-# ═════════════════════════════════════════════════════════
+# ============================================================
 # API — Personal Stats (Client Dashboard)
-# ═════════════════════════════════════════════════════════
+# ============================================================
 
 @app.route("/api/me/stats")
 @login_required
 def api_me_stats():
-    """Technician-এর personal stats"""
     email = session.get("email")
     if not email:
         return jsonify({"ok": False, "message": "Not logged in"}), 401
 
     try:
-        # Meter jobs
         jobs = db.list_meter_jobs(user_email=email, limit=1000)
         total_jobs = len(jobs)
         done_jobs = len([j for j in jobs if j.get("status") == "done"])
 
-        # Avg confidence
         confs = [j.get("confidence", 0) for j in jobs if j.get("confidence")]
         avg_conf = round(sum(confs) / len(confs), 1) if confs else 0
 
-        # Total scans from users
         users = load_users()
         user_data = users.get(email, {})
         scans_count = user_data.get("scans_count", 0)
 
-        # Role info
         role_info = db.get_user_role(email) or {}
 
-        # Subscription
         sub = {}
         if HAS_SUB:
             try:
@@ -1421,16 +1392,13 @@ def api_me_stats():
         return jsonify({"ok": False, "message": str(e)}), 500
 
 
-# ═════════════════════════════════════════════════════════
-# AUTO-CONNECT SYSTEM (auto_connect_added)
-# ═════════════════════════════════════════════════════════
+# ============================================================
+# AUTO-CONNECT SYSTEM
+# ============================================================
 
 @app.route("/api/auto-connect/connect", methods=["POST"])
 @login_required
 def api_auto_connect():
-    """
-    Photo analysis → auto-add to DB → connect mobile to app
-    """
     try:
         import uuid as _uuid
         from werkzeug.utils import secure_filename as _sec
@@ -1455,10 +1423,8 @@ def api_auto_connect():
         if not photo_paths:
             return jsonify({"ok": False, "message": "কোনো বৈধ ছবি নেই"}), 400
 
-        # Deep analysis
         report = deep_analyze(photo_paths)
 
-        # Extract brand/model from report
         brand = report.get("brand", "")
         if not brand:
             for slot, p in report.get("photos", {}).items():
@@ -1473,7 +1439,6 @@ def api_auto_connect():
                 if brand:
                     break
 
-        # Try to get model from photos
         model = ""
         for slot, p in report.get("photos", {}).items():
             ocr = p.get("ocr_raw", "")
@@ -1494,18 +1459,15 @@ def api_auto_connect():
             if model:
                 break
 
-        # Add brand/model to report
         report["brand"] = brand
         report["model"] = model
 
-        # Connect device
         connect_result = connect_device(
             user_email=session.get("email"),
             photo_paths=photo_paths,
             analysis_result=report,
         )
 
-        # Save to DB
         try:
             db.save_meter_job(
                 job_id=job_id,
@@ -1552,11 +1514,9 @@ def api_auto_disconnect():
 @app.route("/api/auto-connect/devices")
 @login_required
 def api_connected_devices():
-    """List connected devices"""
     try:
         from core.auto_connect import get_connected_devices
         devices = get_connected_devices()
-        # Filter by user unless admin
         email = session.get("email")
         if not is_admin(email):
             devices = [d for d in devices if d.get("user_email") == email]
@@ -1578,14 +1538,10 @@ def api_session_details(session_id):
         return jsonify({"ok": False, "message": str(e)})
 
 
+# ============================================================
+# WHATSAPP + MLM + SOFTWARE SOLVER
+# ============================================================
 
-
-
-# ═════════════════════════════════════════════════════════
-# WHATSAPP + MLM + SOFTWARE SOLVER (whatsapp_routes_added)
-# ═════════════════════════════════════════════════════════
-
-# ── WhatsApp ──
 @app.route("/api/whatsapp/config", methods=["GET", "POST"])
 @admin_required
 def api_whatsapp_config():
@@ -1619,7 +1575,6 @@ def api_whatsapp_send_report():
     return jsonify(result)
 
 
-# ── MLM ──
 @app.route("/api/mlm/status")
 @login_required
 def api_mlm_status():
@@ -1656,7 +1611,6 @@ def api_mlm_add_member():
     ))
 
 
-# ── Software Solver ──
 @app.route("/api/solve/auto", methods=["POST"])
 @login_required
 def api_auto_solve():
@@ -1689,11 +1643,8 @@ def api_solve_action():
     return jsonify({"success": False, "message": "Unknown action"})
 
 
-
-
-
 # ============================================================
-# LANGUAGE ROUTES (language_routes_added)
+# LANGUAGE ROUTES
 # ============================================================
 
 @app.route("/api/languages")
@@ -1716,28 +1667,22 @@ def api_set_language():
     return jsonify({"ok": True, "language": lang})
 
 
-
-
-
 # ============================================================
-# MASTER ADMIN DASHBOARD (admin_master_route_added)
+# MASTER ADMIN DASHBOARD
 # ============================================================
 
 @app.route("/admin-master")
 @login_required
 def admin_master():
-    """Master admin dashboard — 12-tab all-in-one"""
     email = session.get("email", "")
     if not is_admin(email):
         return redirect(url_for("dashboard_v2"))
-
     return render_template("admin_master.html", email=email)
 
 
 @app.route("/api/backup/now", methods=["POST"])
 @admin_required
 def api_backup_now():
-    """Manual backup trigger"""
     try:
         from scripts.monthly_backup import run_backup
         path = run_backup()
@@ -1746,11 +1691,8 @@ def api_backup_now():
         return jsonify({"ok": False, "message": str(e)})
 
 
-
-
-
 # ============================================================
-# ONBOARDING ROUTES (onboarding_routes_added)
+# ONBOARDING ROUTES
 # ============================================================
 
 @app.route("/api/onboarding/status")
@@ -1783,14 +1725,10 @@ def api_onboarding_stats():
     return jsonify({"ok": True, **get_stats()})
 
 
+# ============================================================
+# ALL MASTER ROUTES
+# ============================================================
 
-
-
-# ═════════════════════════════════════════════════════════
-# ALL MASTER ROUTES (ALL_MASTER_ROUTES_ADDED)
-# ═════════════════════════════════════════════════════════
-
-# ── Real Tools ──
 @app.route("/api/tools/real-brands")
 @login_required
 def api_real_brands():
@@ -1828,7 +1766,6 @@ def api_full_guide():
     return jsonify(get_full_service_guide(d.get("brand",""), d.get("model",""), d.get("issue_type","boot_loop")))
 
 
-# ── Security ──
 @app.route("/api/security/status")
 @admin_required
 def api_security_status():
@@ -1851,7 +1788,6 @@ def api_security_attempts():
     return jsonify({"ok": True, "attempts": get_recent_attempts(50)})
 
 
-# ── Secure Connect ──
 @app.route("/api/connect/initiate", methods=["POST"])
 @login_required
 def api_connect_initiate():
@@ -1871,7 +1807,6 @@ def api_connect_complete():
     return jsonify(complete_handshake(d.get("fingerprint",""), d.get("challenge_response",""), d.get("session_token","")))
 
 
-# ── ADB Lifecycle ──
 @app.route("/api/adb/status")
 @login_required
 def api_adb_status():
@@ -1907,7 +1842,6 @@ def api_adb_detect():
     return jsonify(detect_device())
 
 
-# ── Tools Status ──
 @app.route("/api/tools/status")
 @admin_required
 def api_tools_status():
@@ -1922,7 +1856,6 @@ def api_tools_install_all():
     return jsonify({"ok": True, "results": install_all()})
 
 
-# ── Firmware ──
 @app.route("/api/firmware/info", methods=["POST"])
 @login_required
 def api_firmware_info():
@@ -1946,11 +1879,14 @@ def api_firmware_brands():
     return jsonify({"ok": True, "brands": get_all_brands()})
 
 
+# ============================================================
+# Run
+# ============================================================
 
 if __name__ == "__main__":
     print()
     print("=" * 62)
-    print("   Mobile Service Master - Full Web App v3.1")
+    print("   Mobile Service Master - Full Web App v3.1 (FINAL)")
     print("=" * 62)
     print()
     print(f"   Admin: {ADMIN_EMAIL}")
@@ -1963,7 +1899,3 @@ if __name__ == "__main__":
 
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port, debug=False, threaded=True)
-
-
-
-
