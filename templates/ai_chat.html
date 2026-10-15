@@ -1,0 +1,80 @@
+﻿<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="UTF-8">
+<title>AI Assistant — Mobile Service Master</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:"Nirmala UI",Arial,sans-serif;background:#1e1e2e;color:#e0e0e0;padding:20px}
+.container{max-width:900px;margin:0 auto;background:#181825;border-radius:12px;padding:20px}
+h1{color:#89b4fa;font-size:20px;margin-bottom:16px}
+.chat-box{background:#11111b;border-radius:10px;padding:16px;min-height:400px;max-height:500px;overflow-y:auto;margin-bottom:14px}
+.msg{padding:10px 14px;border-radius:8px;margin:8px 0;max-width:80%;word-wrap:break-word;white-space:pre-wrap}
+.msg.user{background:#2a6df4;color:#fff;margin-left:auto;text-align:right}
+.msg.ai{background:#313244;color:#cdd6f4}
+.msg.meta{background:#252536;color:#a6adc8;font-size:12px;text-align:center;max-width:100%}
+.input-row{display:flex;gap:8px}
+.input-row input{flex:1;background:#11111b;color:#cdd6f4;border:1px solid #45475a;padding:12px;border-radius:8px;font-family:inherit;font-size:14px}
+.input-row button{background:#2a6df4;color:#fff;border:0;padding:12px 24px;border-radius:8px;cursor:pointer;font-weight:bold}
+.status{background:#252536;padding:8px 12px;border-radius:6px;margin-bottom:12px;font-size:12px;color:#a6adc8}
+.back{color:#89b4fa;text-decoration:none;font-size:12px;display:inline-block;margin-bottom:10px}
+</style>
+</head>
+<body>
+<div class="container">
+  <a href="/dashboard-v2" class="back">← Back to Dashboard</a>
+  <h1>🤖 AI Assistant</h1>
+  <div class="status" id="status">Loading AI config...</div>
+  <div class="chat-box" id="chat">
+    <div class="msg ai">👋 হ্যালো! আমি Mobile Service Master-এর AI assistant। কীভাবে সাহায্য করতে পারি?</div>
+  </div>
+  <div class="input-row">
+    <input type="text" id="q" placeholder="আপনার প্রশ্ন লিখুন..." onkeydown="if(event.key==='Enter')sendMsg()">
+    <button onclick="sendMsg()">পাঠান</button>
+  </div>
+</div>
+<script>
+async function loadStatus(){
+  try{
+    const r=await fetch('/api/ai/config').then(x=>x.json());
+    const s=document.getElementById('status');
+    if(r.ok){
+      const c=r.config;
+      s.textContent = c.enabled
+        ? `✅ AI Active — ${c.provider} (${c.model})`
+        : '⚠️ Rule-based mode (Admin API key দিলে AI activate হবে)';
+    }
+  }catch(e){document.getElementById('status').textContent='Config error'}
+}
+async function sendMsg(){
+  const inp=document.getElementById('q');
+  const q=inp.value.trim();
+  if(!q) return;
+  addMsg('user', q);
+  inp.value='';
+  addMsg('meta','⏳ ভাবছি...');
+  try{
+    const r=await fetch('/api/ai/ask',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({question:q})}).then(x=>x.json());
+    removeLastMeta();
+    if(r.ok) addMsg('ai', r.answer);
+    else addMsg('ai', '❌ ' + (r.message||'Error'));
+  }catch(e){removeLastMeta(); addMsg('ai','❌ Network error: '+e.message);}
+}
+function addMsg(type, text){
+  const c=document.getElementById('chat');
+  const d=document.createElement('div');
+  d.className='msg '+type;
+  d.textContent=text;
+  c.appendChild(d);
+  c.scrollTop=c.scrollHeight;
+}
+function removeLastMeta(){
+  const c=document.getElementById('chat');
+  const last=c.lastChild;
+  if(last && last.classList.contains('meta')) c.removeChild(last);
+}
+loadStatus();
+</script>
+</body>
+</html>

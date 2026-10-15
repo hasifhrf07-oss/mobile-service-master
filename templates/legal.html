@@ -1,0 +1,50 @@
+﻿<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="UTF-8">
+<title>Legal Guide — Mobile Service Master</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:"Nirmala UI",Arial,sans-serif;background:#1e1e2e;color:#e0e0e0;padding:20px}
+.container{max-width:900px;margin:0 auto}
+h1{color:#89b4fa;font-size:20px;margin-bottom:16px}
+.card{background:#181825;border-radius:12px;padding:20px;margin-bottom:16px}
+.card h3{font-size:14px;margin-bottom:12px;text-transform:uppercase}
+.card.ok{border-left:4px solid #a6e3a1}.card.ok h3{color:#a6e3a1}
+.card.bad{border-left:4px solid #f38ba8}.card.bad h3{color:#f38ba8}
+.item{background:#11111b;padding:12px;border-radius:8px;margin-bottom:8px;font-size:13px}
+.item .why{color:#a6adc8;font-size:11px;margin-top:4px}
+.item .alt{color:#f9e2af;font-size:11px;margin-top:4px}
+.back{color:#89b4fa;text-decoration:none;font-size:12px;display:inline-block;margin-bottom:10px}
+</style>
+</head>
+<body>
+<div class="container">
+  <a href="/dashboard-v2" class="back">← Back</a>
+  <h1>⚖️ Legal Guide</h1>
+
+  <div class="card ok">
+    <h3>✅ Allowed Tasks</h3>
+    <div id="allowed">Loading...</div>
+  </div>
+
+  <div class="card bad">
+    <h3>❌ Forbidden Tasks (Jail Risk)</h3>
+    <div id="forbidden">Loading...</div>
+  </div>
+</div>
+<script>
+async function load(){
+  const r = await fetch('/api/legal/summary').then(x=>x.json());
+  if(!r.ok) return;
+  document.getElementById('allowed').innerHTML = r.allowed.map(t =>
+    `<div class="item">✅ ${t.task}<div class="why">${t.why}</div></div>`).join('');
+  document.getElementById('forbidden').innerHTML = r.forbidden.map(t =>
+    `<div class="item">❌ ${t.task}
+       <div class="why">${t.why}</div>
+       <div class="alt">💡 Alternative: ${t.alternative}</div></div>`).join('');
+}
+load();
+</script>
+</body>
+</html>

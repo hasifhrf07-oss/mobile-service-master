@@ -1,0 +1,101 @@
+﻿<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="UTF-8">
+<title>Tools & Tokens — Mobile Service Master</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:"Nirmala UI",Arial,sans-serif;background:#1e1e2e;color:#e0e0e0;padding:20px}
+.container{max-width:1100px;margin:0 auto}
+h1{color:#89b4fa;font-size:20px;margin-bottom:16px}
+.card{background:#181825;border-radius:12px;padding:20px;margin-bottom:16px;border-left:4px solid #89b4fa}
+.card h3{color:#89b4fa;font-size:14px;margin-bottom:12px;text-transform:uppercase}
+.back{color:#89b4fa;text-decoration:none;font-size:12px;display:inline-block;margin-bottom:10px}
+table{width:100%;border-collapse:collapse;font-size:13px;background:#11111b;border-radius:8px;overflow:hidden}
+th{background:#252536;color:#89b4fa;padding:10px;text-align:left;font-size:11px;text-transform:uppercase}
+td{padding:10px;border-bottom:1px solid #313244;color:#cdd6f4}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}
+.tool{background:#11111b;padding:14px;border-radius:8px;border-left:3px solid #a6e3a1}
+.tool.paid{border-left-color:#f9e2af}
+.tool h4{color:#cdd6f4;font-size:13px;margin-bottom:6px}
+.tool .price{color:#a6e3a1;font-size:12px;font-weight:bold}
+.tool.paid .price{color:#f9e2af}
+.tool a{color:#89b4fa;font-size:11px;text-decoration:none;display:inline-block;margin-top:6px}
+.warn{color:#f38ba8;font-weight:bold}
+.ok{color:#a6e3a1}
+</style>
+</head>
+<body>
+<div class="container">
+  <a href="/dashboard-v2" class="back">← Back</a>
+  <h1>🛠️ Tools & Tokens</h1>
+
+  <div class="card">
+    <h3>📋 My Tokens</h3>
+    <div id="tokens">Loading...</div>
+  </div>
+
+  <div class="card" style="border-left-color:#f9e2af">
+    <h3>⏰ Expiring Soon</h3>
+    <div id="reminders">Loading...</div>
+  </div>
+
+  <div class="card" style="border-left-color:#a6e3a1">
+    <h3>🆓 Free Tools</h3>
+    <div class="grid" id="freeTools">Loading...</div>
+  </div>
+
+  <div class="card" style="border-left-color:#cba6f7">
+    <h3>💰 Paid Tools (Legal Subscription)</h3>
+    <div class="grid" id="paidTools">Loading...</div>
+  </div>
+</div>
+<script>
+async function load(){
+  const links = await fetch('/api/tools/links').then(r=>r.json());
+  if(links.ok){
+    const L = links.links;
+    const free = [], paid = [];
+    for(const k in L){
+      const t = L[k];
+      const html = `<div class="tool ${t.price==='Free'?'':'paid'}">
+        <h4>${k}</h4>
+        <div class="price">${t.price}</div>
+        <div style="font-size:11px;color:#a6adc8;margin-top:4px">${t.type}</div>
+        <a href="${t.url}" target="_blank">🔗 Visit →</a>
+      </div>`;
+      if(t.price === 'Free') free.push(html); else paid.push(html);
+    }
+    document.getElementById('freeTools').innerHTML = free.join('') || '<p>None</p>';
+    document.getElementById('paidTools').innerHTML = paid.join('') || '<p>None</p>';
+  }
+  try{
+    const r = await fetch('/api/tools/tokens').then(x=>x.json());
+    if(r.ok && r.tokens && r.tokens.length){
+      let h='<table><tr><th>Tool</th><th>Expiry</th><th>Days Left</th></tr>';
+      r.tokens.forEach(t=>{
+        const c = t.expired?'warn':(t.expiring_soon?'warn':'ok');
+        h+=`<tr><td>${t.tool}</td><td>${t.expiry}</td><td class="${c}">${t.days_left}</td></tr>`;
+      });
+      h+='</table>';
+      document.getElementById('tokens').innerHTML=h;
+    } else {
+      document.getElementById('tokens').innerHTML='<p style="color:#6c7086">No tokens added (Admin only)</p>';
+    }
+  }catch(e){document.getElementById('tokens').innerHTML='<p>Admin access required</p>'}
+  try{
+    const r2 = await fetch('/api/tools/reminders').then(x=>x.json());
+    if(r2.ok && r2.reminders.length){
+      let h='<ul style="color:#f9e2af;padding-left:20px">';
+      r2.reminders.forEach(x=>{h+=`<li>${x.message} <a href="${x.link}" target="_blank">Buy</a></li>`});
+      h+='</ul>';
+      document.getElementById('reminders').innerHTML=h;
+    } else {
+      document.getElementById('reminders').innerHTML='<p style="color:#a6e3a1">✅ All tokens valid</p>';
+    }
+  }catch(e){document.getElementById('reminders').innerHTML='<p>Admin only</p>'}
+}
+load();
+</script>
+</body>
+</html>

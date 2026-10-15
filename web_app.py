@@ -1883,6 +1883,586 @@ def api_firmware_brands():
 # Run
 # ============================================================
 
+
+
+# ═════════════════════════════════════════════════════════
+# MASTER ROUTES — Empathy + Deals + Waiver + AI (MASTER_ROUTES_2_ADDED)
+# ═════════════════════════════════════════════════════════
+
+# ── Empathy ──
+@app.route("/api/empathy/check", methods=["POST"])
+@login_required
+def api_empathy_check():
+    from core.empathy_engine import check_events
+    d = request.get_json() or {}
+    email = session.get("email", "")
+    stats = d.get("stats", {})
+    return jsonify({"ok": True, "messages": check_events(email, stats)})
+
+
+@app.route("/api/empathy/recent")
+@admin_required
+def api_empathy_recent():
+    from core.empathy_engine import get_recent_empathy
+    return jsonify({"ok": True, "recent": get_recent_empathy(50)})
+
+
+# ── Deals ──
+@app.route("/api/deals/for-me")
+@login_required
+def api_deals_for_me():
+    from core.deals_engine import get_active_deals
+    email = session.get("email", "")
+    # Basic stats — could be expanded
+    stats = {"referrals_count": 0, "jobs_completed": 0, "trial_days_left": 180}
+    return jsonify({"ok": True, "deals": get_active_deals(email, stats)})
+
+
+@app.route("/api/deals/all")
+@admin_required
+def api_deals_all():
+    from core.deals_engine import get_all_deals
+    return jsonify({"ok": True, "rules": get_all_deals()})
+
+
+# ── Waiver ──
+@app.route("/api/waiver/text")
+@login_required
+def api_waiver_text():
+    from core.waiver_system import get_waiver_text
+    email = session.get("email", "")
+    ip = request.remote_addr or "unknown"
+    return jsonify({"ok": True, "text": get_waiver_text(email, ip, "Web")})
+
+
+@app.route("/api/waiver/accept", methods=["POST"])
+@login_required
+def api_waiver_accept():
+    from core.waiver_system import accept_waiver
+    email = session.get("email", "")
+    ip = request.remote_addr or "unknown"
+    return jsonify(accept_waiver(email, ip, "Web"))
+
+
+@app.route("/api/waiver/status")
+@login_required
+def api_waiver_status():
+    from core.waiver_system import has_accepted, get_acceptance
+    email = session.get("email", "")
+    return jsonify({
+        "ok": True,
+        "accepted": has_accepted(email),
+        "record": get_acceptance(email),
+    })
+
+
+@app.route("/api/waiver/list")
+@admin_required
+def api_waiver_list():
+    from core.waiver_system import list_all_acceptances
+    return jsonify({"ok": True, "acceptances": list_all_acceptances()})
+
+
+# ── AI Assistant ──
+@app.route("/api/ai/config", methods=["GET", "POST"])
+@admin_required
+def api_ai_config():
+    from core.ai_assistant import get_ai_config, set_ai_config
+    if request.method == "GET":
+        return jsonify({"ok": True, "config": get_ai_config()})
+    d = request.get_json() or {}
+    return jsonify({"ok": True, "config": set_ai_config(d)})
+
+
+@app.route("/api/ai/ask", methods=["POST"])
+@login_required
+def api_ai_ask():
+    from core.ai_assistant import ask
+    d = request.get_json() or {}
+    q = d.get("question", "")
+    if not q:
+        return jsonify({"ok": False, "message": "প্রশ্ন লিখুন"})
+    result = ask(q, session.get("email", "guest"))
+    return jsonify(result)
+
+
+@app.route("/api/ai/activate", methods=["POST"])
+@admin_required
+def api_ai_activate():
+    """Activate AI with API key"""
+    from core.ai_assistant import set_ai_config
+    d = request.get_json() or {}
+    api_key = d.get("api_key", "")
+    if not api_key:
+        return jsonify({"ok": False, "message": "API key দিন"})
+    cfg = set_ai_config({
+        "enabled": True,
+        "provider": d.get("provider", "openai"),
+        "api_key": api_key,
+        "model": d.get("model", "gpt-4o-mini"),
+    })
+    return jsonify({"ok": True, "message": "AI activated", "config": {
+        "enabled": cfg["enabled"],
+        "provider": cfg["provider"],
+        "model": cfg["model"],
+    }})
+
+
+# ── Language ──
+@app.route("/api/languages/all")
+@login_required
+def api_languages_all():
+    """All 10 languages"""
+    import os as _os
+    i18n_dir = _os.path.join(_os.path.dirname(__file__), "data", "i18n")
+    langs = []
+    if _os.path.isdir(i18n_dir):
+        for f in _os.listdir(i18n_dir):
+            if f.endswith(".json"):
+                try:
+                    data = json.load(open(_os.path.join(i18n_dir, f), "r", encoding="utf-8"))
+                    langs.append({"code": data.get("lang_code", f[:-5]), "name": data.get("lang_name", f[:-5])})
+                except Exception:
+                    pass
+    return jsonify({"ok": True, "languages": langs})
+
+
+
+
+
+# ═════════════════════════════════════════════════════════
+# CMD2_ROUTES_ADDED — AI + Tools + Legal + Empathy + Deals + Waiver
+# ═════════════════════════════════════════════════════════
+
+# ── AI Assistant ──
+@app.route("/api/ai/config", methods=["GET", "POST"])
+@admin_required
+def api_ai_config():
+    from core.ai_assistant import get_ai_config, activate_ai, deactivate_ai
+    if request.method == "GET":
+        return jsonify({"ok": True, "config": get_ai_config()})
+    d = request.get_json() or {}
+    if d.get("action") == "deactivate":
+        return jsonify(deactivate_ai())
+    return jsonify(activate_ai(
+        api_key=d.get("api_key", ""),
+        provider=d.get("provider", "openai"),
+        model=d.get("model", "gpt-4o-mini"),
+        admin_email=session.get("email", "")
+    ))
+
+
+@app.route("/api/ai/ask", methods=["POST"])
+@login_required
+def api_ai_ask():
+    from core.ai_assistant import ask
+    d = request.get_json() or {}
+    q = d.get("question", "")
+    if not q:
+        return jsonify({"ok": False, "message": "প্রশ্ন লিখুন"})
+    ctx = d.get("context", "")
+    result = ask(q, session.get("email", "guest"), ctx)
+    return jsonify(result)
+
+
+@app.route("/api/ai/usage")
+@admin_required
+def api_ai_usage():
+    from core.ai_assistant import get_usage_stats
+    return jsonify({"ok": True, **get_usage_stats()})
+
+
+# ── Tool Tokens ──
+@app.route("/api/tools/tokens", methods=["GET", "POST"])
+@admin_required
+def api_tools_tokens():
+    from core.tool_reminder import add_token, list_tokens, remove_token
+    if request.method == "GET":
+        return jsonify({"ok": True, "tokens": list_tokens()})
+    d = request.get_json() or {}
+    action = d.get("action", "add")
+    if action == "remove":
+        return jsonify(remove_token(d.get("tool", "")))
+    return jsonify(add_token(
+        d.get("tool", ""),
+        d.get("expiry", ""),
+        d.get("notes", "")
+    ))
+
+
+@app.route("/api/tools/reminders")
+@admin_required
+def api_tools_reminders():
+    from core.tool_reminder import get_reminders
+    return jsonify({"ok": True, "reminders": get_reminders()})
+
+
+@app.route("/api/tools/links")
+@login_required
+def api_tools_links():
+    from core.tool_reminder import get_all_tool_links
+    return jsonify({"ok": True, "links": get_all_tool_links()})
+
+
+# ── Legal Guide ──
+@app.route("/api/legal/summary")
+@login_required
+def api_legal_summary():
+    from core.legal_guide import get_legal_summary, get_allowed_tasks, get_forbidden_tasks
+    return jsonify({
+        "ok": True,
+        "summary": get_legal_summary(),
+        "allowed": get_allowed_tasks(),
+        "forbidden": get_forbidden_tasks(),
+    })
+
+
+@app.route("/api/legal/check", methods=["POST"])
+@login_required
+def api_legal_check():
+    from core.legal_guide import check_task
+    d = request.get_json() or {}
+    return jsonify(check_task(d.get("task", "")))
+
+
+# ── Empathy ──
+@app.route("/api/empathy/check", methods=["POST"])
+@login_required
+def api_empathy_check():
+    from core.empathy_engine import check_events
+    d = request.get_json() or {}
+    email = session.get("email", "")
+    stats = d.get("stats", {})
+    return jsonify({"ok": True, "messages": check_events(email, stats)})
+
+
+@app.route("/api/empathy/recent")
+@admin_required
+def api_empathy_recent():
+    from core.empathy_engine import get_recent
+    return jsonify({"ok": True, "recent": get_recent(50)})
+
+
+# ── Deals ──
+@app.route("/api/deals/for-me")
+@login_required
+def api_deals_for_me():
+    from core.deals_engine import get_active_deals
+    email = session.get("email", "")
+    stats = {"referrals_count": 0, "jobs_completed": 0,
+             "trial_days_left": 180, "inactive_days": 0}
+    return jsonify({"ok": True, "deals": get_active_deals(email, stats)})
+
+
+@app.route("/api/deals/all")
+@admin_required
+def api_deals_all():
+    from core.deals_engine import get_all_deals
+    return jsonify({"ok": True, "rules": get_all_deals()})
+
+
+# ── Waiver ──
+@app.route("/api/waiver/text")
+@login_required
+def api_waiver_text():
+    from core.waiver_system import get_waiver_text
+    email = session.get("email", "")
+    ip = request.remote_addr or "unknown"
+    return jsonify({"ok": True, "text": get_waiver_text(email, ip, "Web")})
+
+
+@app.route("/api/waiver/accept", methods=["POST"])
+@login_required
+def api_waiver_accept():
+    from core.waiver_system import accept_waiver
+    email = session.get("email", "")
+    ip = request.remote_addr or "unknown"
+    return jsonify(accept_waiver(email, ip, "Web"))
+
+
+@app.route("/api/waiver/status")
+@login_required
+def api_waiver_status():
+    from core.waiver_system import has_accepted, get_acceptance
+    email = session.get("email", "")
+    return jsonify({
+        "ok": True,
+        "accepted": has_accepted(email),
+        "record": get_acceptance(email),
+    })
+
+
+@app.route("/api/waiver/list")
+@admin_required
+def api_waiver_list():
+    from core.waiver_system import list_all
+    return jsonify({"ok": True, "acceptances": list_all()})
+
+
+# ── Firmware ──
+@app.route("/api/firmware/brands")
+@login_required
+def api_firmware_brands():
+    from core.firmware_finder import get_all_brands
+    return jsonify({"ok": True, "brands": get_all_brands()})
+
+
+@app.route("/api/firmware/info", methods=["POST"])
+@login_required
+def api_firmware_info():
+    from core.firmware_finder import get_firmware_info
+    d = request.get_json() or {}
+    return jsonify(get_firmware_info(d.get("brand", ""), d.get("model", "")))
+
+
+@app.route("/api/firmware/steps", methods=["POST"])
+@login_required
+def api_firmware_steps():
+    from core.firmware_finder import get_download_steps
+    d = request.get_json() or {}
+    return jsonify(get_download_steps(
+        d.get("brand", ""), d.get("model", ""), d.get("mode", "fastboot")
+    ))
+
+
+# ── Languages ──
+@app.route("/api/languages/all")
+@login_required
+def api_languages_all():
+    import os as _os
+    i18n = _os.path.join(_os.path.dirname(__file__), "data", "i18n")
+    langs = []
+    if _os.path.isdir(i18n):
+        for f in _os.listdir(i18n):
+            if f.endswith(".json"):
+                try:
+                    d = json.load(open(_os.path.join(i18n, f), "r", encoding="utf-8"))
+                    langs.append({
+                        "code": d.get("lang_code", f[:-5]),
+                        "name": d.get("lang_name", f[:-5])
+                    })
+                except Exception:
+                    pass
+    return jsonify({"ok": True, "languages": langs, "total": len(langs)})
+
+
+
+
+
+# ═════════════════════════════════════════════════════════
+# MASTER_A_ADDED — All Routes
+# ═════════════════════════════════════════════════════════
+
+# ── AI Assistant ──
+@app.route("/api/ai/config", methods=["GET", "POST"])
+@admin_required
+def api_ai_config():
+    from core.ai_assistant import get_ai_config, activate_ai, deactivate_ai
+    if request.method == "GET":
+        return jsonify({"ok": True, "config": get_ai_config()})
+    d = request.get_json() or {}
+    if d.get("action") == "deactivate":
+        return jsonify(deactivate_ai())
+    return jsonify(activate_ai(
+        api_key=d.get("api_key", ""),
+        provider=d.get("provider", "openai"),
+        model=d.get("model", "gpt-4o-mini"),
+        admin_email=session.get("email", "")
+    ))
+
+
+@app.route("/api/ai/ask", methods=["POST"])
+@login_required
+def api_ai_ask():
+    from core.ai_assistant import ask
+    d = request.get_json() or {}
+    q = d.get("question", "").strip()
+    if not q:
+        return jsonify({"ok": False, "message": "প্রশ্ন লিখুন"})
+    return jsonify(ask(q, session.get("email", "guest"), d.get("context", "")))
+
+
+@app.route("/api/ai/usage")
+@admin_required
+def api_ai_usage():
+    from core.ai_assistant import get_usage_stats
+    return jsonify({"ok": True, **get_usage_stats()})
+
+
+# ── Tool Tokens ──
+@app.route("/api/tools/tokens", methods=["GET", "POST"])
+@admin_required
+def api_tools_tokens():
+    from core.tool_reminder import add_token, list_tokens, remove_token
+    if request.method == "GET":
+        return jsonify({"ok": True, "tokens": list_tokens()})
+    d = request.get_json() or {}
+    if d.get("action") == "remove":
+        return jsonify(remove_token(d.get("tool", "")))
+    return jsonify(add_token(d.get("tool", ""), d.get("expiry", ""), d.get("notes", "")))
+
+
+@app.route("/api/tools/reminders")
+@admin_required
+def api_tools_reminders():
+    from core.tool_reminder import get_reminders
+    return jsonify({"ok": True, "reminders": get_reminders()})
+
+
+@app.route("/api/tools/links")
+@login_required
+def api_tools_links():
+    from core.tool_reminder import get_all_tool_links
+    return jsonify({"ok": True, "links": get_all_tool_links()})
+
+
+# ── Legal ──
+@app.route("/api/legal/summary")
+@login_required
+def api_legal_summary():
+    from core.legal_guide import get_legal_summary, get_allowed_tasks, get_forbidden_tasks
+    return jsonify({"ok": True, "summary": get_legal_summary(),
+                    "allowed": get_allowed_tasks(), "forbidden": get_forbidden_tasks()})
+
+
+@app.route("/api/legal/check", methods=["POST"])
+@login_required
+def api_legal_check():
+    from core.legal_guide import check_task
+    d = request.get_json() or {}
+    return jsonify(check_task(d.get("task", "")))
+
+
+# ── Empathy ──
+@app.route("/api/empathy/check", methods=["POST"])
+@login_required
+def api_empathy_check():
+    from core.empathy_engine import check_events
+    d = request.get_json() or {}
+    return jsonify({"ok": True, "messages": check_events(session.get("email", ""), d.get("stats", {}))})
+
+
+@app.route("/api/empathy/recent")
+@admin_required
+def api_empathy_recent():
+    from core.empathy_engine import get_recent
+    return jsonify({"ok": True, "recent": get_recent(50)})
+
+
+# ── Deals ──
+@app.route("/api/deals/for-me")
+@login_required
+def api_deals_for_me():
+    from core.deals_engine import get_active_deals
+    stats = {"referrals_count": 0, "jobs_completed": 0, "trial_days_left": 180, "inactive_days": 0}
+    return jsonify({"ok": True, "deals": get_active_deals(session.get("email", ""), stats)})
+
+
+@app.route("/api/deals/all")
+@admin_required
+def api_deals_all():
+    from core.deals_engine import get_all_deals
+    return jsonify({"ok": True, "rules": get_all_deals()})
+
+
+# ── Waiver ──
+@app.route("/api/waiver/text")
+@login_required
+def api_waiver_text():
+    from core.waiver_system import get_waiver_text
+    return jsonify({"ok": True, "text": get_waiver_text(session.get("email", ""), request.remote_addr or "", "Web")})
+
+
+@app.route("/api/waiver/accept", methods=["POST"])
+@login_required
+def api_waiver_accept():
+    from core.waiver_system import accept_waiver
+    return jsonify(accept_waiver(session.get("email", ""), request.remote_addr or "", "Web"))
+
+
+@app.route("/api/waiver/status")
+@login_required
+def api_waiver_status():
+    from core.waiver_system import has_accepted, get_acceptance
+    email = session.get("email", "")
+    return jsonify({"ok": True, "accepted": has_accepted(email), "record": get_acceptance(email)})
+
+
+@app.route("/api/waiver/list")
+@admin_required
+def api_waiver_list():
+    from core.waiver_system import list_all
+    return jsonify({"ok": True, "acceptances": list_all()})
+
+
+# ── Firmware ──
+@app.route("/api/firmware/brands")
+@login_required
+def api_firmware_brands():
+    from core.firmware_finder import get_all_brands
+    return jsonify({"ok": True, "brands": get_all_brands()})
+
+
+@app.route("/api/firmware/info", methods=["POST"])
+@login_required
+def api_firmware_info():
+    from core.firmware_finder import get_firmware_info
+    d = request.get_json() or {}
+    return jsonify(get_firmware_info(d.get("brand", ""), d.get("model", "")))
+
+
+@app.route("/api/firmware/steps", methods=["POST"])
+@login_required
+def api_firmware_steps():
+    from core.firmware_finder import get_download_steps
+    d = request.get_json() or {}
+    return jsonify(get_download_steps(d.get("brand", ""), d.get("model", ""), d.get("mode", "fastboot")))
+
+
+# ── Languages ──
+@app.route("/api/languages/all")
+@login_required
+def api_languages_all():
+    import os as _os
+    i18n = _os.path.join(_os.path.dirname(__file__), "data", "i18n")
+    langs = []
+    if _os.path.isdir(i18n):
+        for f in _os.listdir(i18n):
+            if f.endswith(".json"):
+                try:
+                    dd = json.load(open(_os.path.join(i18n, f), "r", encoding="utf-8"))
+                    langs.append({"code": dd.get("lang_code", f[:-5]), "name": dd.get("lang_name", f[:-5])})
+                except Exception:
+                    pass
+    return jsonify({"ok": True, "languages": langs, "total": len(langs)})
+
+
+# ── Pages ──
+@app.route("/tools")
+@login_required
+def page_tools():
+    return render_template("tools.html", email=session.get("email", ""))
+
+
+@app.route("/ai-chat")
+@login_required
+def page_ai_chat():
+    return render_template("ai_chat.html", email=session.get("email", ""))
+
+
+@app.route("/legal")
+@login_required
+def page_legal():
+    return render_template("legal.html", email=session.get("email", ""))
+
+
+@app.route("/waiver")
+@login_required
+def page_waiver():
+    return render_template("waiver.html", email=session.get("email", ""))
+
+
+
 if __name__ == "__main__":
     print()
     print("=" * 62)
@@ -1899,3 +2479,5 @@ if __name__ == "__main__":
 
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port, debug=False, threaded=True)
+
+

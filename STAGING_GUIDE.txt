@@ -1,0 +1,39 @@
+﻿============================================================
+   STAGING ENVIRONMENT SETUP GUIDE
+============================================================
+
+🎯 WHY STAGING?
+   Test new features BEFORE live users see them.
+   Live breaks = bad. Staging breaks = OK.
+
+📋 SETUP (15 মিনিট):
+
+STEP 1: Create staging branch
+------------------------------------------------------------
+   git checkout -b staging
+   git push origin staging
+
+STEP 2: Render-এ staging service
+------------------------------------------------------------
+   1. https://dashboard.render.com
+   2. New + → Web Service
+   3. Select repo
+   4. Branch: staging (not main)
+   5. Name: msm-staging
+   6. Same settings as main
+   7. Create
+
+STEP 3: New URL
+------------------------------------------------------------
+   Staging:  https://msm-staging.onrender.com
+   Live:     https://mobile-service-master.onrender.com
+
+WORKFLOW:
+------------------------------------------------------------
+   1. Test locally
+   2. Push to staging
+   3. Test on staging URL
+   4. If OK: merge to main
+   5. Render auto-deploys main → Live
+
+============================================================
