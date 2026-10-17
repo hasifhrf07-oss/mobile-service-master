@@ -22,3 +22,13 @@ def is_tool_enabled(tool_name):
     if tool_name in PAID_TOOLS:
         return PAID_TOOLS[tool_name]["enabled"]
     return False
+
+# B2B Ecosystem Settings
+TEST_MODE = True
+MAX_TRANSACTION_LIMIT = 100
+
+
+# B2B Ecosystem Settings
+TEST_MODE = True
+MAX_TRANSACTION_LIMIT = 100
+
