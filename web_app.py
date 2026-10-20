@@ -23,12 +23,10 @@ class MasterDataManager:
             return None
 
     def handover_instruction(self, token, instruction, helper):
-        # Data Manager Helper executes the instruction
         return helper.execute_instruction(token, instruction)
 
 class DataManagerHelper:
     def execute_instruction(self, token, instruction):
-        # Simulated AI processing of instructions
         if instruction == 'unlock_report':
             return {"status": "success", "message": "Report unlocked by AI Helper."}
         elif instruction == 'backup_data':
@@ -40,9 +38,7 @@ class DataManagerHelper:
 
 manager = MasterDataManager()
 helper = DataManagerHelper()
-
-# ডেমো ডেটা
-latest_scan = {"device": "iPhone 13 Pro Max", "report": {"CPU": 95, "RAM": 88, "Battery": 77}, "solution": "AI Diagnosis..."}
+latest_scan = {"device": "iPhone 13 Pro Max", "report": {"CPU": 95, "RAM": 88, "Battery": 77, "Display": 100, "Camera": 92, "Storage": 85, "Network": 98}, "solution": "All ICs are communicating perfectly."}
 
 def get_db():
     try:
@@ -96,57 +92,54 @@ def get_devices(brand):
         return jsonify(devices)
     except: return jsonify([])
 
-# --- NEW ADVANCED APIS ---
+# --- APIS FOR FEATURES ---
 @app.route('/api/tools/live-voltage', methods=['GET'])
 def live_voltage():
     v = round(random.uniform(3.8, 4.25), 3)
     a = round(random.uniform(0.4, 1.2), 3)
-    return jsonify({"voltage": v, "current": a, "status": "Stable" if v < 4.2 else "High Voltage!"})
+    return jsonify({"voltage": v, "current": a})
 
-@app.route('/api/tools/circuit-diagram/<brand>/<model>', methods=['GET'])
-def circuit_diagram(brand, model):
-    # মডেল অনুযায়ী ডায়াগ্রাম ডেটা
-    return jsonify({
-        "brand": brand, "model": model,
-        "components": ["U2 Tristar IC", "PMIC 8020", "NAND Flash", "Wi-Fi IC"],
-        "paths": ["VCC_MAIN -> U2", "VDD_CPU -> PMIC", "Antenna -> Wi-Fi IC"],
-        "logic": "If VCC_MAIN is 0V, check F1 fuse and U2 IC."
-    })
+@app.route('/api/tools/deep-scan', methods=['POST'])
+def deep_scan():
+    steps = [
+        {"text": "Connecting via USB...", "progress": 10},
+        {"text": "Reading [1] CPU IC...", "progress": 30},
+        {"text": "Reading [2] RAM IC...", "progress": 50},
+        {"text": "Reading [3] Battery IC...", "progress": 70},
+        {"text": "SUCCESS: All Data Read Successfully!", "progress": 100}
+    ]
+    return jsonify({"steps": steps, "report": latest_scan["report"], "solution": latest_scan["solution"]})
+
+@app.route('/api/tools/board-image/<model>', methods=['GET'])
+def board_image(model):
+    images = [
+        "https://images.unsplash.com/photo-1591799264318-7e6ef8ddb7ea?ixlib=rb-4.0.3&auto=format&fit=crop&w=1500&q=100",
+        "https://images.unsplash.com/photo-1517420704952-d9f39e95b43e?ixlib=rb-4.0.3&auto=format&fit=crop&w=1500&q=100"
+    ]
+    return jsonify({"image_url": random.choice(images)})
 
 @app.route('/api/ai/chat', methods=['POST'])
 def ai_chat():
-    data = request.get_json()
-    prompt = data.get('prompt', '').lower()
-    
-    if "voltage" in prompt:
-        reply = "AI Assistant: Live voltage is currently stable. If you see 0V, check the F1 fuse."
-    elif "backup" in prompt:
-        reply = "AI Assistant: You can initiate the backup from the Admin Settings panel."
-    elif "circuit" in prompt:
-        reply = "AI Assistant: Please select a brand and model to view the master circuit diagram."
-    else:
-        reply = f"AI Assistant: I received your instruction '{prompt}'. The Master Data Manager has logged this."
-        
+    prompt = request.get_json().get('prompt', '').lower()
+    if "voltage" in prompt: reply = "AI: Voltage is stable. Check F1 fuse if 0V."
+    elif "circuit" in prompt: reply = "AI: Select a model in Dashboard to view Board View."
+    else: reply = f"AI: I received your instruction '{prompt}'. Processing via MasterDataManager."
     return jsonify({"reply": reply})
 
-@app.route('/api/admin/encrypt-token', methods=['POST'])
+@app.route('/api/admin/encrypt', methods=['POST'])
 def encrypt_token():
-    data = request.get_json()
-    encrypted = manager.encrypt_data(data.get('data', latest_scan))
-    return jsonify({"token": encrypted})
+    return jsonify({"token": manager.encrypt_data(latest_scan)})
 
 @app.route('/api/admin/execute', methods=['POST'])
 def execute_instruction():
     data = request.get_json()
     token = data.get('token')
     instruction = data.get('instruction', 'unlock_report')
-    
-    # ডিক্রিপ্ট এবং হেল্পার দিয়ে এক্সিকিউট
     decrypted = manager.decrypt_data(token)
     if decrypted:
         result = manager.handover_instruction(token, instruction, helper)
         return jsonify({"status": "success", "data": decrypted, "ai_result": result})
-    return jsonify({"status": "error", "message": "Invalid Encrypted Token!"})
+    return jsonify({"status": "error", "message": "Invalid Token!"})
 
 if __name__ == '__main__':
     app.run(host='127.0.0.1', port=5000, debug=False)

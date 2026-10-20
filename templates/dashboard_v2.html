@@ -3,126 +3,164 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MSM PRO - Master Dashboard</title>
+    <title>MSM PRO - Enterprise Dashboard</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
         body { background-color: #0b1120; color: #e2e8f0; font-family: 'Inter', sans-serif; overflow: hidden; height: 100vh; }
-        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar { width: 5px; }
         ::-webkit-scrollbar-thumb { background: #334155; border-radius: 5px; }
         .glass { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.05); }
-        .chat-bubble { max-width: 80%; padding: 8px 12px; border-radius: 8px; margin-bottom: 8px; }
-        .chat-user { background: #0369a1; color: white; align-self: flex-end; }
-        .chat-ai { background: #1e293b; color: #e2e8f0; align-self: flex-start; border: 1px solid #334155;}
+        .chat-bubble { max-width: 75%; padding: 10px 14px; border-radius: 8px; margin-bottom: 10px; font-size: 14px; }
+        .chat-user { background: #0284c7; color: white; align-self: flex-end; border-bottom-right-radius: 0;}
+        .chat-ai { background: #1e293b; color: #e2e8f0; align-self: flex-start; border: 1px solid #334155; border-bottom-left-radius: 0;}
+        @keyframes scan-laser { 0% { top: 0%; opacity: 1; } 50% { top: 100%; opacity: 1; } 100% { top: 0%; opacity: 1; } }
+        .laser-line { position: absolute; left: 0; right: 0; height: 3px; background: rgba(56, 189, 248, 0.8); box-shadow: 0 0 15px rgba(56, 189, 248, 1); animation: scan-laser 2s infinite linear; z-index: 25; display: none; pointer-events: none; }
     </style>
 </head>
 <body class="flex h-screen w-screen overflow-hidden">
 
     <!-- SIDEBAR -->
     <div class="w-56 bg-[#111827] border-r border-slate-800 flex flex-col h-full z-20 shrink-0">
-        <div class="p-4 border-b border-slate-800"><h1 class="text-lg font-bold text-sky-400"><i class="fas fa-mobile-screen mr-2"></i>MSM PRO</h1></div>
+        <div class="p-4 border-b border-slate-800"><h1 class="text-xl font-bold text-sky-400"><i class="fas fa-mobile-screen mr-2"></i>MSM PRO</h1></div>
         <div class="flex-1 py-4 space-y-1 overflow-y-auto">
-            <a href="#" onclick="switchView('dashboard')" class="flex items-center px-4 py-2 bg-sky-900/30 text-sky-400 border-l-4 border-sky-500"><i class="fas fa-home w-5"></i> Dashboard</a>
-            <a href="#" onclick="switchView('live-voltage')" class="flex items-center px-4 py-2 text-slate-300 hover:bg-slate-800 border-l-4 border-transparent"><i class="fas fa-bolt text-yellow-400 w-5"></i> Live Voltage</a>
-            <a href="#" onclick="switchView('circuit-diagram')" class="flex items-center px-4 py-2 text-slate-300 hover:bg-slate-800 border-l-4 border-transparent"><i class="fas fa-project-diagram text-emerald-400 w-5"></i> Circuit Diagram</a>
-            <a href="#" onclick="switchView('ai-chat')" class="flex items-center px-4 py-2 text-slate-300 hover:bg-slate-800 border-l-4 border-transparent"><i class="fas fa-robot text-purple-400 w-5"></i> AI Assistant</a>
-            <a href="#" onclick="switchView('admin-settings')" class="flex items-center px-4 py-2 text-slate-300 hover:bg-slate-800 border-l-4 border-transparent"><i class="fas fa-user-shield text-red-400 w-5"></i> Admin Settings</a>
+            <a href="#" onclick="switchView('dashboard')" class="flex items-center px-4 py-3 bg-sky-900/30 text-sky-400 border-l-4 border-sky-500"><i class="fas fa-home w-6"></i> Dashboard</a>
+            <a href="#" onclick="switchView('diagnostic')" class="flex items-center px-4 py-3 text-slate-300 hover:bg-slate-800 border-l-4 border-transparent"><i class="fas fa-microchip w-6"></i> AI Diagnostic</a>
+            <a href="#" onclick="switchView('live-voltage')" class="flex items-center px-4 py-3 text-slate-300 hover:bg-slate-800 border-l-4 border-transparent"><i class="fas fa-bolt text-yellow-400 w-6"></i> Live Voltage</a>
+            <a href="#" onclick="switchView('ai-chat')" class="flex items-center px-4 py-3 text-slate-300 hover:bg-slate-800 border-l-4 border-transparent"><i class="fas fa-robot text-purple-400 w-6"></i> AI Assistant</a>
+        </div>
+        <div class="p-4 border-t border-slate-800">
+            <a href="#" onclick="switchView('settings')" class="flex items-center px-4 py-2 text-red-400 hover:text-red-300 font-bold"><i class="fas fa-user-shield w-6"></i> Admin Settings</a>
         </div>
     </div>
 
     <!-- MAIN CONTENT -->
     <div class="flex-1 flex flex-col h-full bg-[#0f172a] relative overflow-hidden">
         
-        <!-- DASHBOARD VIEW -->
-        <div id="dashboardView" class="absolute inset-0 flex flex-col p-6 overflow-y-auto">
-            <div class="flex justify-between items-center mb-6">
-                <h2 class="text-2xl font-bold text-white">Device Database</h2>
-                <div class="bg-slate-800 px-4 py-2 rounded-lg border border-slate-700">
-                    <i class="fas fa-database text-green-400 mr-2"></i> <span id="totalModels" class="font-bold text-white">0</span> Models
-                </div>
+        <!-- TOPBAR -->
+        <div class="h-14 border-b border-slate-800 bg-[#111827] flex items-center justify-between px-6 z-10 shrink-0">
+            <div class="relative w-96">
+                <i class="fas fa-search absolute left-3 top-2.5 text-slate-500"></i>
+                <input type="text" id="globalSearch" onkeyup="filterBrands()" placeholder="Search brands..." class="w-full bg-slate-800 border border-slate-700 text-sm rounded-lg pl-10 pr-4 py-2 focus:outline-none focus:border-sky-500 text-white">
             </div>
-            <div class="flex gap-4 h-full">
-                <div class="w-1/4 glass rounded-xl border border-slate-700 p-4 overflow-y-auto">
-                    <input type="text" id="brandSearch" onkeyup="filterBrands()" placeholder="Search brands..." class="w-full bg-slate-800 border border-slate-600 rounded px-3 py-2 text-sm text-white mb-4">
-                    <div id="brandList" class="space-y-1"></div>
-                </div>
-                <div class="flex-1 glass rounded-xl border border-slate-700 p-4 overflow-y-auto">
-                    <h3 id="selectedBrandTitle" class="text-xl font-bold text-sky-400 mb-4 border-b border-slate-700 pb-2">Select a Brand</h3>
-                    <div id="deviceContainer" class="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"></div>
-                </div>
+            <div class="bg-slate-800 px-4 py-1.5 rounded-lg border border-slate-700 flex items-center">
+                <i class="fas fa-database text-green-400 mr-2"></i>
+                <span class="text-sm font-bold text-white" id="totalModels">Loading...</span>
+                <span class="text-xs text-slate-400 ml-2">Models</span>
             </div>
         </div>
 
-        <!-- LIVE VOLTAGE VIEW -->
-        <div id="liveVoltageView" class="hidden absolute inset-0 flex-col p-6 bg-[#0b1120] z-10">
-            <h2 class="text-2xl font-bold text-yellow-400 mb-6"><i class="fas fa-bolt mr-2"></i>Live Voltage & Current Monitor</h2>
-            <div class="grid grid-cols-2 gap-6 flex-1">
-                <div class="glass rounded-xl border border-slate-700 flex flex-col items-center justify-center relative overflow-hidden">
-                    <div class="absolute inset-0 bg-yellow-500/5 animate-pulse"></div>
-                    <p class="text-slate-400 mb-2 text-lg">Live Voltage</p>
-                    <h1 class="text-8xl font-bold text-white mb-2"><span id="voltVal">0.00</span><span class="text-4xl text-yellow-500">V</span></h1>
-                </div>
-                <div class="glass rounded-xl border border-slate-700 flex flex-col items-center justify-center">
-                    <p class="text-slate-400 mb-2 text-lg">Current Draw</p>
-                    <h1 class="text-8xl font-bold text-white mb-2"><span id="currVal">0.00</span><span class="text-4xl text-sky-500">A</span></h1>
-                </div>
-            </div>
-        </div>
+        <!-- DYNAMIC VIEWS -->
+        <div class="flex-1 relative overflow-hidden">
 
-        <!-- CIRCUIT DIAGRAM VIEW -->
-        <div id="circuitDiagramView" class="hidden absolute inset-0 flex-col p-6 bg-[#0b1120] z-10 overflow-y-auto">
-            <h2 class="text-2xl font-bold text-emerald-400 mb-6"><i class="fas fa-project-diagram mr-2"></i>Master Circuit Diagram Logic</h2>
-            <div class="glass rounded-xl border border-slate-700 p-6">
-                <h3 id="diagramTitle" class="text-xl font-bold text-white mb-4">Select a Model from Dashboard</h3>
-                <div id="diagramContent" class="space-y-4 text-slate-300">
-                    <p class="italic text-slate-500">Waiting for model selection...</p>
+            <!-- DASHBOARD VIEW -->
+            <div id="dashboardView" class="absolute inset-0 flex p-6 gap-6 overflow-hidden">
+                <!-- Brands Col -->
+                <div class="w-56 glass rounded-xl border border-slate-700 flex flex-col overflow-hidden">
+                    <div class="p-3 border-b border-slate-700 bg-slate-800/50"><h3 class="font-bold text-sky-400 text-sm">Brands</h3></div>
+                    <div id="brandList" class="flex-1 overflow-y-auto p-2 space-y-1"></div>
+                </div>
+                <!-- Devices Col -->
+                <div class="flex-1 glass rounded-xl border border-slate-700 flex flex-col overflow-hidden">
+                    <div class="p-3 border-b border-slate-700 bg-slate-800/50 flex justify-between items-center">
+                        <h3 id="selectedBrandTitle" class="font-bold text-white text-lg">Select a Brand</h3>
+                    </div>
+                    <div id="deviceContainer" class="flex-1 overflow-y-auto p-4"><div class="text-center text-slate-500 mt-20 text-sm">Select a brand to view devices.</div></div>
                 </div>
             </div>
-        </div>
 
-        <!-- AI CHAT VIEW -->
-        <div id="aiChatView" class="hidden absolute inset-0 flex-col bg-[#0b1120] z-10">
-            <div class="p-4 border-b border-slate-800 bg-slate-900/50">
-                <h2 class="text-xl font-bold text-purple-400"><i class="fas fa-robot mr-2"></i>AI Master Assistant</h2>
-            </div>
-            <div id="chatBox" class="flex-1 p-6 overflow-y-auto flex flex-col gap-4">
-                <div class="chat-bubble chat-ai">Hello Admin. I am the AI Master Data Assistant. I am connected to the MasterDataManager. How can I help you with your hardware diagnostics today?</div>
-            </div>
-            <div class="p-4 border-t border-slate-800 bg-slate-900 flex gap-2">
-                <input type="text" id="chatInput" onkeypress="handleChat(event)" placeholder="Ask AI or give instruction (e.g., 'check voltage', 'backup data')..." class="flex-1 bg-slate-800 border border-slate-600 rounded px-4 py-3 text-white focus:outline-none focus:border-purple-500">
-                <button onclick="sendMessage()" class="bg-purple-600 hover:bg-purple-500 text-white px-6 py-3 rounded font-bold"><i class="fas fa-paper-plane"></i></button>
-            </div>
-        </div>
-
-        <!-- ADMIN SETTINGS VIEW -->
-        <div id="adminSettingsView" class="hidden absolute inset-0 flex-col p-6 bg-[#0b1120] z-10 overflow-y-auto">
-            <h2 class="text-2xl font-bold text-red-400 mb-6"><i class="fas fa-user-shield mr-2"></i>Master Data Manager Settings</h2>
-            <div class="grid grid-cols-2 gap-6">
-                <div class="glass rounded-xl border border-slate-700 p-6">
-                    <h3 class="text-lg font-bold text-white mb-4">Encrypted Token System</h3>
-                    <button onclick="generateEncryptedToken()" class="w-full bg-red-600 hover:bg-red-500 text-white font-bold py-2 rounded mb-4">Generate Token from Scan Data</button>
-                    <textarea id="tokenOutput" readonly class="w-full bg-black text-green-400 font-mono text-xs p-3 rounded border border-slate-600 h-32" placeholder="Encrypted Token will appear here..."></textarea>
+            <!-- AI DIAGNOSTIC VIEW (With Board View & Radar) -->
+            <div id="diagnosticView" class="hidden absolute inset-0 flex-col p-6 overflow-hidden bg-[#0b1120]">
+                <div class="flex justify-between items-center mb-4 shrink-0">
+                    <h2 class="text-2xl font-bold text-sky-400"><i class="fas fa-microchip mr-2"></i>AI Hardware Diagnostic</h2>
+                    <button onclick="startDeepScan()" class="bg-sky-600 hover:bg-sky-500 px-6 py-2 rounded text-white font-bold"><i class="fas fa-play mr-2"></i>Start Scan</button>
                 </div>
-                <div class="glass rounded-xl border border-slate-700 p-6">
-                    <h3 class="text-lg font-bold text-white mb-4">Data Manager Handover</h3>
-                    <p class="text-xs text-slate-400 mb-2">Paste Token and let MasterDataManager execute instruction.</p>
-                    <input type="text" id="inputToken" placeholder="Paste Encrypted Token" class="w-full bg-slate-800 border border-slate-600 rounded px-3 py-2 text-white mb-2 text-sm">
-                    <select id="instructionSelect" class="w-full bg-slate-800 border border-slate-600 rounded px-3 py-2 text-white mb-4 text-sm">
-                        <option value="unlock_report">Unlock Report</option>
-                        <option value="backup_data">Backup System</option>
-                        <option value="check_role">Check Role Status</option>
-                    </select>
-                    <button onclick="executeManagerInstruction()" class="w-full bg-sky-600 hover:bg-sky-500 text-white font-bold py-2 rounded">Execute Instruction</button>
-                    <div id="managerResult" class="mt-4 text-sm text-green-400 font-mono"></div>
+                <div class="grid grid-cols-2 gap-6 flex-1 overflow-hidden">
+                    <!-- Left: Terminal & Board View -->
+                    <div class="flex flex-col gap-4 overflow-hidden">
+                        <div class="glass rounded-xl p-4 flex flex-col border border-slate-700 h-1/2">
+                            <div class="mb-2 flex justify-between text-xs font-bold text-slate-300"><span id="deepProgressText">Ready...</span><span id="deepProgressPercent">0%</span></div>
+                            <div class="w-full bg-slate-800 rounded-full h-1.5 mb-2"><div id="deepProgressBar" class="bg-sky-500 h-1.5 rounded-full" style="width: 0%"></div></div>
+                            <div id="deepTerminal" class="bg-black/80 border border-slate-700 rounded-lg p-3 flex-1 overflow-y-auto font-mono text-[11px] text-green-400"><p class="text-slate-500">> Waiting...</p></div>
+                        </div>
+                        <div class="glass rounded-xl p-4 border border-slate-700 h-1/2 relative flex items-center justify-center overflow-hidden">
+                            <div class="laser-line" id="laserLine"></div>
+                            <img id="boardImage" src="" class="max-h-full max-w-full object-contain hidden">
+                            <div id="boardPlaceholder" class="text-slate-500 text-sm">Board View will appear here...</div>
+                        </div>
+                    </div>
+                    <!-- Right: Radar Chart & Text -->
+                    <div class="flex flex-col gap-4 overflow-hidden">
+                        <div class="glass rounded-xl p-4 border border-slate-700 h-1/2 relative"><canvas id="reportChart"></canvas></div>
+                        <div class="glass rounded-xl p-4 border border-slate-700 h-1/2 flex flex-col">
+                            <h3 class="text-sm font-bold text-sky-400 mb-2">AI Solution & Text Report</h3>
+                            <div id="aiSolutionText" class="text-xs text-green-400 mb-2 flex-1 overflow-y-auto font-mono whitespace-pre-wrap bg-black/30 p-2 rounded"></div>
+                            <button onclick="generateEncryptedToken()" class="bg-purple-600 hover:bg-purple-500 text-white font-bold py-2 rounded text-sm mt-auto"><i class="fas fa-qrcode mr-2"></i>Generate Encrypted Token</button>
+                        </div>
+                    </div>
                 </div>
             </div>
-        </div>
 
+            <!-- LIVE VOLTAGE VIEW -->
+            <div id="liveVoltageView" class="hidden absolute inset-0 flex-col p-6 bg-[#0b1120]">
+                <h2 class="text-2xl font-bold text-yellow-400 mb-6"><i class="fas fa-bolt mr-2"></i>Live Voltage & Current</h2>
+                <div class="grid grid-cols-2 gap-6 flex-1">
+                    <div class="glass rounded-xl border border-slate-700 flex flex-col items-center justify-center relative overflow-hidden">
+                        <div class="absolute inset-0 bg-yellow-500/5 animate-pulse"></div>
+                        <p class="text-slate-400 mb-2 text-lg">Voltage</p>
+                        <h1 class="text-8xl font-bold text-white mb-2"><span id="voltVal">0.00</span><span class="text-4xl text-yellow-500">V</span></h1>
+                    </div>
+                    <div class="glass rounded-xl border border-slate-700 flex flex-col items-center justify-center">
+                        <p class="text-slate-400 mb-2 text-lg">Current</p>
+                        <h1 class="text-8xl font-bold text-white mb-2"><span id="currVal">0.00</span><span class="text-4xl text-sky-500">A</span></h1>
+                    </div>
+                </div>
+            </div>
+
+            <!-- AI CHAT VIEW -->
+            <div id="aiChatView" class="hidden absolute inset-0 flex-col bg-[#0b1120]">
+                <div class="p-4 border-b border-slate-800 bg-slate-900/50 flex justify-between items-center">
+                    <h2 class="text-xl font-bold text-purple-400"><i class="fas fa-robot mr-2"></i>AI Master Assistant</h2>
+                    <span class="text-xs bg-slate-800 px-2 py-1 rounded text-slate-400">MasterDataManager Connected</span>
+                </div>
+                <div id="chatBox" class="flex-1 p-6 overflow-y-auto flex flex-col gap-2">
+                    <div class="chat-bubble chat-ai">Hello Admin. I am connected to the MasterDataManager. How can I assist you?</div>
+                </div>
+                <div class="p-4 border-t border-slate-800 bg-slate-900 flex gap-2">
+                    <input type="text" id="chatInput" onkeypress="handleChat(event)" placeholder="Ask AI or give instruction..." class="flex-1 bg-slate-800 border border-slate-600 rounded px-4 py-3 text-white focus:outline-none focus:border-purple-500">
+                    <button onclick="sendMessage()" class="bg-purple-600 hover:bg-purple-500 text-white px-6 py-3 rounded font-bold"><i class="fas fa-paper-plane"></i></button>
+                </div>
+            </div>
+
+            <!-- ADMIN SETTINGS VIEW -->
+            <div id="settingsView" class="hidden absolute inset-0 flex-col p-6 bg-[#0b1120] overflow-y-auto">
+                <h2 class="text-2xl font-bold text-red-400 mb-6"><i class="fas fa-user-shield mr-2"></i>Admin Settings (Encrypted)</h2>
+                <div class="grid grid-cols-2 gap-6">
+                    <div class="glass rounded-xl border border-slate-700 p-6">
+                        <h3 class="text-lg font-bold text-white mb-4">MasterDataManager Token</h3>
+                        <textarea id="tokenOutput" readonly class="w-full bg-black text-green-400 font-mono text-xs p-3 rounded border border-slate-600 h-32" placeholder="Token will appear here..."></textarea>
+                    </div>
+                    <div class="glass rounded-xl border border-slate-700 p-6">
+                        <h3 class="text-lg font-bold text-white mb-4">Execute Instruction</h3>
+                        <input type="text" id="inputToken" placeholder="Paste Token" class="w-full bg-slate-800 border border-slate-600 rounded px-3 py-2 text-white mb-2 text-sm">
+                        <select id="instructionSelect" class="w-full bg-slate-800 border border-slate-600 rounded px-3 py-2 text-white mb-4 text-sm">
+                            <option value="unlock_report">Unlock Report</option>
+                            <option value="backup_data">Backup System</option>
+                        </select>
+                        <button onclick="executeManagerInstruction()" class="w-full bg-sky-600 hover:bg-sky-500 text-white font-bold py-2 rounded">Execute via AI Helper</button>
+                        <div id="managerResult" class="mt-4 text-sm text-green-400 font-mono"></div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
     </div>
 
     <script>
         let allBrands = [];
         let currentBrand = "";
+        let myChart = null;
 
         // Load Data
         fetch('/api/total-models').then(res => res.json()).then(data => document.getElementById('totalModels').innerText = data.total);
@@ -141,7 +179,7 @@
         }
 
         function filterBrands() {
-            const query = document.getElementById('brandSearch').value.toLowerCase();
+            const query = document.getElementById('globalSearch').value.toLowerCase();
             renderBrands(allBrands.filter(b => b.brand_name.toLowerCase().includes(query)));
         }
 
@@ -156,32 +194,35 @@
 
             fetch(`/api/get_devices/${brandName}`).then(res => res.json()).then(data => {
                 container.innerHTML = '';
-                if(data.length === 0) { container.innerHTML = '<div class="text-center text-slate-500 mt-20 text-sm col-span-full">No devices found.</div>'; return; }
+                if(data.length === 0) { container.innerHTML = '<div class="text-center text-slate-500 mt-20 text-sm">No devices found.</div>'; return; }
+                const grid = document.createElement('div');
+                grid.className = 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3';
                 data.forEach(device => {
-                    container.innerHTML += `
-                        <div onclick="loadCircuitDiagram('${brandName}', '${device.model}')" class="bg-slate-800/50 border border-slate-700 p-3 rounded-lg hover:border-emerald-500 cursor-pointer transition">
+                    grid.innerHTML += `
+                        <div onclick="runBoardView('${device.model}')" class="bg-slate-800/50 border border-slate-700 p-3 rounded-lg hover:border-sky-500 cursor-pointer transition">
                             <div class="flex justify-between items-start mb-1"><span class="text-[10px] bg-slate-900 text-sky-400 px-2 py-0.5 rounded font-bold">${device.year}</span></div>
                             <h4 class="text-sm font-bold text-white mb-1">${device.model}</h4>
                             <p class="text-[10px] text-slate-400 font-mono">${device.specs}</p>
                         </div>
                     `;
                 });
+                container.appendChild(grid);
             });
         }
 
         // --- VIEW SWITCHER ---
         function switchView(view) {
-            ['dashboardView', 'liveVoltageView', 'circuitDiagramView', 'aiChatView', 'adminSettingsView'].forEach(v => {
+            ['dashboardView', 'diagnosticView', 'liveVoltageView', 'aiChatView', 'settingsView'].forEach(v => {
                 document.getElementById(v).classList.add('hidden'); document.getElementById(v).classList.remove('flex');
             });
             if(view === 'dashboard') { document.getElementById('dashboardView').classList.remove('hidden'); document.getElementById('dashboardView').classList.add('flex'); }
+            if(view === 'diagnostic') { document.getElementById('diagnosticView').classList.remove('hidden'); document.getElementById('diagnosticView').classList.add('flex'); }
             if(view === 'live-voltage') { 
                 document.getElementById('liveVoltageView').classList.remove('hidden'); document.getElementById('liveVoltageView').classList.add('flex'); 
                 startLiveVoltage();
             }
-            if(view === 'circuit-diagram') { document.getElementById('circuitDiagramView').classList.remove('hidden'); document.getElementById('circuitDiagramView').classList.add('flex'); }
             if(view === 'ai-chat') { document.getElementById('aiChatView').classList.remove('hidden'); document.getElementById('aiChatView').classList.add('flex'); }
-            if(view === 'admin-settings') { document.getElementById('adminSettingsView').classList.remove('hidden'); document.getElementById('adminSettingsView').classList.add('flex'); }
+            if(view === 'settings') { document.getElementById('settingsView').classList.remove('hidden'); document.getElementById('settingsView').classList.add('flex'); }
         }
 
         // --- LIVE VOLTAGE ---
@@ -196,35 +237,75 @@
             }, 1000);
         }
 
-        // --- CIRCUIT DIAGRAM ---
-        async function loadCircuitDiagram(brand, model) {
-            switchView('circuit-diagram');
-            document.getElementById('diagramTitle').innerText = `${brand} ${model} - Master Layout`;
-            document.getElementById('diagramContent').innerHTML = '<p class="text-yellow-400 animate-pulse">Loading deep circuit logic...</p>';
+        // --- AI DIAGNOSTIC & BOARD VIEW ---
+        async function runBoardView(model) {
+            switchView('diagnostic');
             
-            const res = await fetch(`/api/tools/circuit-diagram/${brand}/${model}`);
+            // লেজার অ্যানিমেশন চালু
+            document.getElementById('laserLine').style.display = 'block';
+            document.getElementById('boardPlaceholder').classList.add('hidden');
+            const img = document.getElementById('boardImage');
+            img.classList.add('hidden');
+
+            const res = await fetch(`/api/tools/board-image/${model}`);
             const data = await res.json();
             
-            let html = `
-                <div class="mb-4">
-                    <h4 class="text-sm font-bold text-sky-400 uppercase mb-2">Major Components (ICs)</h4>
-                    <div class="flex flex-wrap gap-2">${data.components.map(c => `<span class="bg-slate-800 border border-slate-600 px-3 py-1 rounded text-xs text-white">${c}</span>`).join('')}</div>
-                </div>
-                <div class="mb-4">
-                    <h4 class="text-sm font-bold text-emerald-400 uppercase mb-2">Main Power Paths</h4>
-                    <ul class="list-disc pl-5 text-sm text-slate-300">${data.paths.map(p => `<li>${p}</li>`).join('')}</ul>
-                </div>
-                <div class="bg-red-900/20 border border-red-500/50 p-4 rounded-lg">
-                    <h4 class="text-sm font-bold text-red-400 uppercase mb-2"><i class="fas fa-exclamation-triangle mr-2"></i>Master Logic Analysis</h4>
-                    <p class="text-sm text-slate-300 font-mono">${data.logic}</p>
-                </div>
-            `;
-            document.getElementById('diagramContent').innerHTML = html;
+            setTimeout(() => {
+                img.src = data.image_url;
+                img.classList.remove('hidden');
+                document.getElementById('laserLine').style.display = 'none';
+            }, 2000);
+        }
+
+        async function startDeepScan() {
+            const output = document.getElementById('deepTerminal');
+            const bar = document.getElementById('deepProgressBar');
+            const pct = document.getElementById('deepProgressPercent');
+            const txt = document.getElementById('deepProgressText');
+            bar.style.width = '0%'; pct.innerText = '0%'; txt.innerText = 'Scanning...';
+            output.innerHTML = '<p class="text-yellow-400">> Connecting...</p>';
+
+            const res = await fetch('/api/tools/deep-scan', { method: 'POST' });
+            const data = await res.json();
+            output.innerHTML = '';
+            let i = 0;
+            
+            function next() {
+                if (i < data.steps.length) {
+                    let s = data.steps[i];
+                    bar.style.width = s.progress + '%'; pct.innerText = s.progress + '%';
+                    let cls = s.text.includes('SUCCESS') ? 'text-green-400 font-bold' : 'text-slate-300';
+                    output.innerHTML += `<p class="${cls} mb-1 border-b border-slate-800 pb-1">> ${s.text}</p>`;
+                    output.scrollTop = output.scrollHeight;
+                    i++; setTimeout(next, 600);
+                } else {
+                    txt.innerText = 'Complete';
+                    renderReport(data.report, data.solution);
+                }
+            }
+            next();
+        }
+
+        function renderReport(report, solution) {
+            const ctx = document.getElementById('reportChart').getContext('2d');
+            if(myChart) myChart.destroy();
+            myChart = new Chart(ctx, {
+                type: 'radar', data: { labels: Object.keys(report), datasets: [{ label: 'Health %', data: Object.values(report), backgroundColor: 'rgba(56, 189, 248, 0.2)', borderColor: 'rgba(56, 189, 248, 1)', borderWidth: 2 }] },
+                options: { responsive: true, maintainAspectRatio: false, scales: { r: { angleLines: { color: '#334155' }, grid: { color: '#334155' }, pointLabels: { color: '#e2e8f0' }, ticks: { display: false, min: 0, max: 100 } } } }
+            });
+
+            let text = "=== DEVICE DIAGNOSTIC REPORT ===\n\n";
+            let count = 1;
+            for (let [key, value] of Object.entries(report)) {
+                text += `[${count}] ${key.padEnd(10)}: ${value}% \n`;
+                count++;
+            }
+            text += "\n=== AI SOLUTION ===\n" + solution;
+            document.getElementById('aiSolutionText').innerText = text;
         }
 
         // --- AI CHAT ---
         function handleChat(e) { if(e.key === 'Enter') sendMessage(); }
-        
         async function sendMessage() {
             const input = document.getElementById('chatInput');
             const text = input.value.trim();
@@ -235,7 +316,6 @@
             input.value = '';
             chatBox.scrollTop = chatBox.scrollHeight;
             
-            // টাইপিং ইন্ডিকেটর
             const loadingId = 'loading-' + Date.now();
             chatBox.innerHTML += `<div id="${loadingId}" class="chat-bubble chat-ai text-slate-400 italic">AI is thinking...</div>`;
             chatBox.scrollTop = chatBox.scrollHeight;
@@ -248,11 +328,13 @@
             chatBox.scrollTop = chatBox.scrollHeight;
         }
 
-        // --- ENCRYPTED MASTER DATA MANAGER ---
+        // --- ENCRYPTED TOKEN ---
         async function generateEncryptedToken() {
-            const res = await fetch('/api/admin/encrypt-token', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ data: "Super Secret Hardware Data" }) });
+            const res = await fetch('/api/admin/encrypt', { method: 'POST' });
             const data = await res.json();
+            alert("Encrypted Token Generated! Check Admin Settings.");
             document.getElementById('tokenOutput').value = data.token;
+            switchView('settings');
         }
 
         async function executeManagerInstruction() {
@@ -261,13 +343,13 @@
             const resultDiv = document.getElementById('managerResult');
             
             if(!token) { alert('Paste a token first!'); return; }
-            resultDiv.innerHTML = '<span class="text-yellow-400 animate-pulse">MasterDataManager is processing...</span>';
+            resultDiv.innerHTML = '<span class="text-yellow-400 animate-pulse">Manager processing...</span>';
             
             const res = await fetch('/api/admin/execute', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ token: token, instruction: instruction }) });
             const data = await res.json();
             
             if(data.status === 'success') {
-                resultDiv.innerHTML = `<p class="text-green-400 font-bold">✅ ${data.ai_result.message}</p><p class="text-xs text-slate-500 mt-1">Decrypted Payload: ${JSON.stringify(data.data)}</p>`;
+                resultDiv.innerHTML = `<p class="text-green-400 font-bold">✅ ${data.ai_result.message}</p>`;
             } else {
                 resultDiv.innerHTML = `<p class="text-red-400">❌ ${data.message}</p>`;
             }
