@@ -1,17 +1,19 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MSM PRO - Dashboard</title>
+    <title>MSM PRO - Master Dashboard</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
         body { background-color: #0b1120; color: #e2e8f0; font-family: 'Inter', sans-serif; overflow: hidden; height: 100vh; }
         ::-webkit-scrollbar { width: 4px; }
         ::-webkit-scrollbar-thumb { background: #334155; border-radius: 5px; }
         .glass { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.05); }
+        .chat-bubble { max-width: 80%; padding: 8px 12px; border-radius: 8px; margin-bottom: 8px; }
+        .chat-user { background: #0369a1; color: white; align-self: flex-end; }
+        .chat-ai { background: #1e293b; color: #e2e8f0; align-self: flex-start; border: 1px solid #334155;}
     </style>
 </head>
 <body class="flex h-screen w-screen overflow-hidden">
@@ -19,142 +21,112 @@
     <!-- SIDEBAR -->
     <div class="w-56 bg-[#111827] border-r border-slate-800 flex flex-col h-full z-20 shrink-0">
         <div class="p-4 border-b border-slate-800"><h1 class="text-lg font-bold text-sky-400"><i class="fas fa-mobile-screen mr-2"></i>MSM PRO</h1></div>
-        <div class="flex-1 py-4 space-y-1">
-            <a href="#" onclick="switchView('dashboard')" class="flex items-center px-4 py-3 bg-sky-900/30 text-sky-400 border-l-4 border-sky-500"><i class="fas fa-home w-6"></i> Dashboard</a>
-            <a href="#" onclick="switchView('diagnostic')" class="flex items-center px-4 py-3 text-slate-300 hover:bg-slate-800 border-l-4 border-transparent"><i class="fas fa-microchip w-6"></i> AI Diagnostic</a>
-        </div>
-        <div class="p-4 border-t border-slate-800">
-            <a href="#" onclick="switchView('settings')" class="flex items-center px-4 py-2 text-purple-400 hover:text-purple-300 font-bold"><i class="fas fa-user-shield w-6"></i> Admin Settings</a>
-        </div>
-    </div>
-
-    <!-- BRANDS COLUMN -->
-    <div id="brandsCol" class="w-56 bg-[#0f172a] border-r border-slate-800 flex flex-col h-full shrink-0">
-        <div class="p-3 border-b border-slate-800">
-            <input type="text" id="brandSearch" onkeyup="filterBrands()" placeholder="Search brands..." class="w-full bg-slate-800 border border-slate-700 text-xs rounded px-3 py-2 text-white focus:outline-none">
-        </div>
-        <div id="brandList" class="flex-1 overflow-y-auto p-2 space-y-1"></div>
-    </div>
-
-    <!-- DEVICES COLUMN -->
-    <div id="devicesCol" class="flex-1 bg-[#0b1120] flex flex-col h-full border-r border-slate-800 min-w-0">
-        <div class="p-4 border-b border-slate-800 flex justify-between items-center">
-            <h2 id="selectedBrandTitle" class="text-xl font-bold text-white">Select a Brand</h2>
-            <div class="bg-slate-800 px-3 py-1 rounded text-xs border border-slate-700"><span class="text-green-400 font-bold" id="totalModels">0</span> Models</div>
-        </div>
-        <div id="deviceContainer" class="flex-1 overflow-y-auto p-4"></div>
-    </div>
-
-    <!-- TOOLS COLUMN -->
-    <div id="toolsCol" class="w-80 bg-[#111827] flex flex-col h-full shadow-2xl shrink-0">
-        <div class="p-4 border-b border-slate-800 bg-slate-900/50"><h2 class="text-md font-bold text-purple-400"><i class="fas fa-tools mr-2"></i>Tools</h2></div>
-        <div class="p-3 flex flex-col flex-1 overflow-hidden">
-            <button id="viewReportBtn" onclick="switchView('report')" class="hidden w-full mb-3 bg-green-600 hover:bg-green-500 text-white font-bold py-2 rounded shadow-lg transition"><i class="fas fa-file-invoice mr-2"></i> View Report</button>
-            
-            <div class="grid grid-cols-3 gap-2 mb-3 shrink-0">
-                <button onclick="runTool('connect')" class="bg-slate-800 p-2 rounded hover:bg-slate-700 text-center border border-slate-700"><i class="fas fa-plug text-sky-400 mb-1 text-lg"></i><br><span class="text-[9px]">Connect</span></button>
-                <button onclick="runTool('backup')" class="bg-slate-800 p-2 rounded hover:bg-slate-700 text-center border border-slate-700"><i class="fas fa-cloud-arrow-up text-emerald-400 mb-1 text-lg"></i><br><span class="text-[9px]">Backup</span></button>
-                <button onclick="runTool('bypass')" class="bg-slate-800 p-2 rounded hover:bg-slate-700 text-center border border-slate-700"><i class="fas fa-unlock text-red-400 mb-1 text-lg"></i><br><span class="text-[9px]">Bypass</span></button>
-                <button onclick="runTool('analyze')" class="bg-slate-800 p-2 rounded hover:bg-slate-700 text-center border border-slate-700"><i class="fas fa-microchip text-blue-400 mb-1 text-lg"></i><br><span class="text-[9px]">Analyzer</span></button>
-                <button onclick="runTool('meter')" class="bg-slate-800 p-2 rounded hover:bg-slate-700 text-center border border-slate-700"><i class="fas fa-gauge-high text-orange-400 mb-1 text-lg"></i><br><span class="text-[9px]">Meter</span></button>
-                <button onclick="runTool('wipe')" class="bg-slate-800 p-2 rounded hover:bg-slate-700 text-center border border-slate-700"><i class="fas fa-eraser text-yellow-400 mb-1 text-lg"></i><br><span class="text-[9px]">Wipe</span></button>
-                <button onclick="startDeepScan()" class="bg-slate-800 p-2 rounded hover:bg-slate-700 text-center border border-sky-500"><i class="fas fa-search text-sky-400 mb-1 text-lg"></i><br><span class="text-[9px] font-bold text-sky-400">Deep Scan</span></button>
-                <button onclick="switchView('settings')" class="bg-slate-800 p-2 rounded hover:bg-slate-700 text-center border border-yellow-500"><i class="fas fa-key text-yellow-400 mb-1 text-lg"></i><br><span class="text-[9px] font-bold text-yellow-400">Unlock</span></button>
-                <button onclick="runTool('solve')" class="bg-slate-800 p-2 rounded hover:bg-slate-700 text-center border border-slate-700"><i class="fas fa-robot text-pink-400 mb-1 text-lg"></i><br><span class="text-[9px]">Auto Solve</span></button>
-            </div>
-            
-            <div class="mb-1 flex justify-between text-[10px] font-bold text-slate-400">
-                <span id="progressText">Ready</span><span id="progressPercent">0%</span>
-            </div>
-            <div class="w-full bg-slate-800 rounded-full h-1.5 mb-2 overflow-hidden">
-                <div id="progressBar" class="bg-sky-500 h-1.5 rounded-full transition-all" style="width: 0%"></div>
-            </div>
-            <div id="terminalOutput" class="bg-black/80 border border-slate-700 rounded-lg p-2 flex-1 overflow-y-auto font-mono text-[11px] text-green-400">
-                <p class="text-slate-500">> Waiting...</p>
-            </div>
+        <div class="flex-1 py-4 space-y-1 overflow-y-auto">
+            <a href="#" onclick="switchView('dashboard')" class="flex items-center px-4 py-2 bg-sky-900/30 text-sky-400 border-l-4 border-sky-500"><i class="fas fa-home w-5"></i> Dashboard</a>
+            <a href="#" onclick="switchView('live-voltage')" class="flex items-center px-4 py-2 text-slate-300 hover:bg-slate-800 border-l-4 border-transparent"><i class="fas fa-bolt text-yellow-400 w-5"></i> Live Voltage</a>
+            <a href="#" onclick="switchView('circuit-diagram')" class="flex items-center px-4 py-2 text-slate-300 hover:bg-slate-800 border-l-4 border-transparent"><i class="fas fa-project-diagram text-emerald-400 w-5"></i> Circuit Diagram</a>
+            <a href="#" onclick="switchView('ai-chat')" class="flex items-center px-4 py-2 text-slate-300 hover:bg-slate-800 border-l-4 border-transparent"><i class="fas fa-robot text-purple-400 w-5"></i> AI Assistant</a>
+            <a href="#" onclick="switchView('admin-settings')" class="flex items-center px-4 py-2 text-slate-300 hover:bg-slate-800 border-l-4 border-transparent"><i class="fas fa-user-shield text-red-400 w-5"></i> Admin Settings</a>
         </div>
     </div>
 
-    <!-- ADMIN SETTINGS VIEW -->
-    <div id="settingsView" class="hidden absolute inset-0 bg-[#0b1120] z-30 flex-col p-6 ml-56">
-        <div class="flex justify-between items-center mb-4 border-b border-slate-700 pb-2">
-            <h2 class="text-2xl font-bold text-purple-400"><i class="fas fa-user-shield mr-2"></i>Admin Settings</h2>
-            <button onclick="switchView('dashboard')" class="bg-slate-700 hover:bg-slate-600 px-4 py-2 rounded text-sm text-white"><i class="fas fa-times mr-2"></i>Close</button>
-        </div>
+    <!-- MAIN CONTENT -->
+    <div class="flex-1 flex flex-col h-full bg-[#0f172a] relative overflow-hidden">
         
-        <div class="grid grid-cols-2 gap-6">
-            <div class="glass rounded-xl border border-purple-500/50 p-6">
-                <h3 class="text-lg font-bold text-white mb-2"><i class="fas fa-key text-yellow-400 mr-2"></i>Master Password</h3>
-                <p class="text-xs text-green-400 mb-2 font-mono">Current PIN: <span id="activePinDisplay" class="font-bold text-white text-lg tracking-widest">Loading...</span></p>
-                <div class="flex items-center gap-2 mt-4">
-                    <input type="text" id="newMasterPin" maxlength="8" placeholder="Enter 8 digits" class="bg-slate-800 border border-slate-600 rounded px-4 py-2 text-white tracking-widest text-lg font-bold w-48 focus:border-purple-500 outline-none">
-                    <button onclick="saveMasterPin()" class="bg-purple-600 hover:bg-purple-500 text-white px-6 py-2 rounded font-bold shadow-lg transition">Save</button>
+        <!-- DASHBOARD VIEW -->
+        <div id="dashboardView" class="absolute inset-0 flex flex-col p-6 overflow-y-auto">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-bold text-white">Device Database</h2>
+                <div class="bg-slate-800 px-4 py-2 rounded-lg border border-slate-700">
+                    <i class="fas fa-database text-green-400 mr-2"></i> <span id="totalModels" class="font-bold text-white">0</span> Models
                 </div>
-                <p id="savePinMsg" class="text-green-400 font-bold mt-3 hidden"><i class="fas fa-check-circle"></i> Saved!</p>
             </div>
+            <div class="flex gap-4 h-full">
+                <div class="w-1/4 glass rounded-xl border border-slate-700 p-4 overflow-y-auto">
+                    <input type="text" id="brandSearch" onkeyup="filterBrands()" placeholder="Search brands..." class="w-full bg-slate-800 border border-slate-600 rounded px-3 py-2 text-sm text-white mb-4">
+                    <div id="brandList" class="space-y-1"></div>
+                </div>
+                <div class="flex-1 glass rounded-xl border border-slate-700 p-4 overflow-y-auto">
+                    <h3 id="selectedBrandTitle" class="text-xl font-bold text-sky-400 mb-4 border-b border-slate-700 pb-2">Select a Brand</h3>
+                    <div id="deviceContainer" class="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"></div>
+                </div>
+            </div>
+        </div>
 
+        <!-- LIVE VOLTAGE VIEW -->
+        <div id="liveVoltageView" class="hidden absolute inset-0 flex-col p-6 bg-[#0b1120] z-10">
+            <h2 class="text-2xl font-bold text-yellow-400 mb-6"><i class="fas fa-bolt mr-2"></i>Live Voltage & Current Monitor</h2>
+            <div class="grid grid-cols-2 gap-6 flex-1">
+                <div class="glass rounded-xl border border-slate-700 flex flex-col items-center justify-center relative overflow-hidden">
+                    <div class="absolute inset-0 bg-yellow-500/5 animate-pulse"></div>
+                    <p class="text-slate-400 mb-2 text-lg">Live Voltage</p>
+                    <h1 class="text-8xl font-bold text-white mb-2"><span id="voltVal">0.00</span><span class="text-4xl text-yellow-500">V</span></h1>
+                </div>
+                <div class="glass rounded-xl border border-slate-700 flex flex-col items-center justify-center">
+                    <p class="text-slate-400 mb-2 text-lg">Current Draw</p>
+                    <h1 class="text-8xl font-bold text-white mb-2"><span id="currVal">0.00</span><span class="text-4xl text-sky-500">A</span></h1>
+                </div>
+            </div>
+        </div>
+
+        <!-- CIRCUIT DIAGRAM VIEW -->
+        <div id="circuitDiagramView" class="hidden absolute inset-0 flex-col p-6 bg-[#0b1120] z-10 overflow-y-auto">
+            <h2 class="text-2xl font-bold text-emerald-400 mb-6"><i class="fas fa-project-diagram mr-2"></i>Master Circuit Diagram Logic</h2>
             <div class="glass rounded-xl border border-slate-700 p-6">
-                <h3 class="text-lg font-bold text-white mb-2"><i class="fas fa-unlock text-sky-400 mr-2"></i>Unlock Report</h3>
-                <p class="text-sm text-slate-400 mb-4">Enter password to unlock the latest generated report.</p>
-                <div class="flex items-center gap-2">
-                    <input type="password" id="unlockPinInput" maxlength="8" placeholder="********" class="bg-slate-800 border border-slate-600 rounded px-4 py-2 text-white tracking-widest w-48 focus:border-sky-500 outline-none">
-                    <button onclick="verifyPin()" class="bg-sky-600 hover:bg-sky-500 text-white px-6 py-2 rounded font-bold shadow-lg transition">Unlock</button>
+                <h3 id="diagramTitle" class="text-xl font-bold text-white mb-4">Select a Model from Dashboard</h3>
+                <div id="diagramContent" class="space-y-4 text-slate-300">
+                    <p class="italic text-slate-500">Waiting for model selection...</p>
                 </div>
             </div>
         </div>
-    </div>
 
-    <!-- AI DIAGNOSTIC VIEW -->
-    <div id="diagnosticView" class="hidden absolute inset-0 bg-[#0b1120] z-30 flex-col p-6 ml-56">
-        <div class="flex justify-between items-center mb-4">
-            <h1 class="text-2xl font-bold text-sky-400"><i class="fas fa-microchip mr-2"></i>Deep Motherboard AI Scan</h1>
-            <button onclick="switchView('dashboard')" class="bg-slate-700 hover:bg-slate-600 px-6 py-2 rounded text-white font-bold">Back</button>
+        <!-- AI CHAT VIEW -->
+        <div id="aiChatView" class="hidden absolute inset-0 flex-col bg-[#0b1120] z-10">
+            <div class="p-4 border-b border-slate-800 bg-slate-900/50">
+                <h2 class="text-xl font-bold text-purple-400"><i class="fas fa-robot mr-2"></i>AI Master Assistant</h2>
+            </div>
+            <div id="chatBox" class="flex-1 p-6 overflow-y-auto flex flex-col gap-4">
+                <div class="chat-bubble chat-ai">Hello Admin. I am the AI Master Data Assistant. I am connected to the MasterDataManager. How can I help you with your hardware diagnostics today?</div>
+            </div>
+            <div class="p-4 border-t border-slate-800 bg-slate-900 flex gap-2">
+                <input type="text" id="chatInput" onkeypress="handleChat(event)" placeholder="Ask AI or give instruction (e.g., 'check voltage', 'backup data')..." class="flex-1 bg-slate-800 border border-slate-600 rounded px-4 py-3 text-white focus:outline-none focus:border-purple-500">
+                <button onclick="sendMessage()" class="bg-purple-600 hover:bg-purple-500 text-white px-6 py-3 rounded font-bold"><i class="fas fa-paper-plane"></i></button>
+            </div>
         </div>
-        <div class="glass rounded-xl p-4 flex-1 flex flex-col">
-            <div class="mb-2 flex justify-between text-sm font-bold text-slate-300"><span id="deepProgressText">Ready...</span><span id="deepProgressPercent">0%</span></div>
-            <div class="w-full bg-slate-800 rounded-full h-2 mb-4"><div id="deepProgressBar" class="bg-sky-500 h-2 rounded-full" style="width: 0%"></div></div>
-            <div id="deepTerminal" class="bg-black/80 border border-slate-700 rounded-lg p-4 flex-1 overflow-y-auto font-mono text-sm text-green-400"><p class="text-slate-500">> Waiting...</p></div>
-        </div>
-    </div>
 
-    <!-- REPORT VIEW -->
-    <div id="reportView" class="hidden absolute inset-0 bg-[#0b1120] z-40 flex-col p-6 ml-56">
-        <div class="flex justify-between items-center mb-4">
-            <h1 class="text-2xl font-bold text-green-400"><i class="fas fa-chart-pie mr-2"></i>Diagnostic Report</h1>
-            <div class="flex gap-2">
-                <button onclick="generateQR()" class="bg-purple-600 hover:bg-purple-500 px-4 py-2 rounded text-white font-bold"><i class="fas fa-qrcode mr-2"></i>Show QR</button>
-                <button onclick="closeReport()" class="bg-red-600 hover:bg-red-500 px-4 py-2 rounded text-white font-bold"><i class="fas fa-sign-out-alt mr-2"></i>Exit</button>
-            </div>
-        </div>
-        <div class="grid grid-cols-2 gap-6 h-full">
-            <div class="glass rounded-xl p-6 flex flex-col border border-slate-700 relative">
-                <div class="flex-1 relative"><canvas id="reportChart"></canvas></div>
-            </div>
-            <div class="flex flex-col gap-4">
-                <div class="glass rounded-xl p-4 flex-1 border border-slate-700">
-                    <h3 class="text-sky-400 font-bold mb-2">AI Solution</h3>
-                    <p id="aiSolutionText" class="text-sm text-slate-300"></p>
+        <!-- ADMIN SETTINGS VIEW -->
+        <div id="adminSettingsView" class="hidden absolute inset-0 flex-col p-6 bg-[#0b1120] z-10 overflow-y-auto">
+            <h2 class="text-2xl font-bold text-red-400 mb-6"><i class="fas fa-user-shield mr-2"></i>Master Data Manager Settings</h2>
+            <div class="grid grid-cols-2 gap-6">
+                <div class="glass rounded-xl border border-slate-700 p-6">
+                    <h3 class="text-lg font-bold text-white mb-4">Encrypted Token System</h3>
+                    <button onclick="generateEncryptedToken()" class="w-full bg-red-600 hover:bg-red-500 text-white font-bold py-2 rounded mb-4">Generate Token from Scan Data</button>
+                    <textarea id="tokenOutput" readonly class="w-full bg-black text-green-400 font-mono text-xs p-3 rounded border border-slate-600 h-32" placeholder="Encrypted Token will appear here..."></textarea>
                 </div>
-                <div class="glass rounded-xl p-4 flex-1 flex flex-col border border-slate-700">
-                    <div class="flex justify-between items-center mb-2">
-                        <h3 class="text-sm font-bold text-sky-400"><i class="fas fa-file-alt mr-2"></i>Text Report</h3>
-                        <button onclick="copyText()" class="bg-slate-700 hover:bg-slate-600 text-white px-3 py-1 rounded text-xs transition"><i class="fas fa-copy mr-1"></i> Copy</button>
-                    </div>
-                    <pre id="textReportOutput" class="text-xs text-green-400 font-mono whitespace-pre-wrap flex-1 overflow-y-auto bg-black/50 p-2 rounded"></pre>
+                <div class="glass rounded-xl border border-slate-700 p-6">
+                    <h3 class="text-lg font-bold text-white mb-4">Data Manager Handover</h3>
+                    <p class="text-xs text-slate-400 mb-2">Paste Token and let MasterDataManager execute instruction.</p>
+                    <input type="text" id="inputToken" placeholder="Paste Encrypted Token" class="w-full bg-slate-800 border border-slate-600 rounded px-3 py-2 text-white mb-2 text-sm">
+                    <select id="instructionSelect" class="w-full bg-slate-800 border border-slate-600 rounded px-3 py-2 text-white mb-4 text-sm">
+                        <option value="unlock_report">Unlock Report</option>
+                        <option value="backup_data">Backup System</option>
+                        <option value="check_role">Check Role Status</option>
+                    </select>
+                    <button onclick="executeManagerInstruction()" class="w-full bg-sky-600 hover:bg-sky-500 text-white font-bold py-2 rounded">Execute Instruction</button>
+                    <div id="managerResult" class="mt-4 text-sm text-green-400 font-mono"></div>
                 </div>
             </div>
         </div>
+
     </div>
 
     <script>
         let allBrands = [];
         let currentBrand = "";
-        let myChart = null;
-        let currentReportText = "";
 
+        // Load Data
         fetch('/api/total-models').then(res => res.json()).then(data => document.getElementById('totalModels').innerText = data.total);
         fetch('/api/get_brands').then(res => res.json()).then(data => { allBrands = data; renderBrands(allBrands); });
-        loadCurrentPin();
 
         function renderBrands(brands) {
             const list = document.getElementById('brandList');
@@ -184,167 +156,121 @@
 
             fetch(`/api/get_devices/${brandName}`).then(res => res.json()).then(data => {
                 container.innerHTML = '';
-                if(data.length === 0) { container.innerHTML = '<div class="text-center text-slate-500 mt-20 text-sm">No devices found.</div>'; return; }
-                const grid = document.createElement('div');
-                grid.className = 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3';
+                if(data.length === 0) { container.innerHTML = '<div class="text-center text-slate-500 mt-20 text-sm col-span-full">No devices found.</div>'; return; }
                 data.forEach(device => {
-                    grid.innerHTML += `<div class="bg-slate-800/50 border border-slate-700 p-3 rounded-lg hover:border-sky-500"><div class="flex justify-between items-start mb-1"><span class="text-[10px] bg-slate-900 text-sky-400 px-2 py-0.5 rounded font-bold">${device.year}</span></div><h4 class="text-sm font-bold text-white mb-1">${device.model}</h4><p class="text-[10px] text-slate-400 font-mono">${device.specs}</p></div>`;
+                    container.innerHTML += `
+                        <div onclick="loadCircuitDiagram('${brandName}', '${device.model}')" class="bg-slate-800/50 border border-slate-700 p-3 rounded-lg hover:border-emerald-500 cursor-pointer transition">
+                            <div class="flex justify-between items-start mb-1"><span class="text-[10px] bg-slate-900 text-sky-400 px-2 py-0.5 rounded font-bold">${device.year}</span></div>
+                            <h4 class="text-sm font-bold text-white mb-1">${device.model}</h4>
+                            <p class="text-[10px] text-slate-400 font-mono">${device.specs}</p>
+                        </div>
+                    `;
                 });
-                container.appendChild(grid);
             });
         }
 
+        // --- VIEW SWITCHER ---
         function switchView(view) {
-            ['settingsView', 'diagnosticView', 'reportView'].forEach(v => { document.getElementById(v).classList.add('hidden'); document.getElementById(v).classList.remove('flex'); });
-            if(view === 'settings') { document.getElementById('settingsView').classList.remove('hidden'); document.getElementById('settingsView').classList.add('flex'); }
-            if(view === 'diagnostic') { document.getElementById('diagnosticView').classList.remove('hidden'); document.getElementById('diagnosticView').classList.add('flex'); }
-            if(view === 'report') { document.getElementById('reportView').classList.remove('hidden'); document.getElementById('reportView').classList.add('flex'); }
-        }
-
-        // --- PIN MANAGEMENT ---
-        function loadCurrentPin() {
-            fetch('/api/get-pin').then(res => res.json()).then(data => { 
-                document.getElementById('newMasterPin').value = data.pin; 
-                document.getElementById('activePinDisplay').innerText = data.pin;
+            ['dashboardView', 'liveVoltageView', 'circuitDiagramView', 'aiChatView', 'adminSettingsView'].forEach(v => {
+                document.getElementById(v).classList.add('hidden'); document.getElementById(v).classList.remove('flex');
             });
+            if(view === 'dashboard') { document.getElementById('dashboardView').classList.remove('hidden'); document.getElementById('dashboardView').classList.add('flex'); }
+            if(view === 'live-voltage') { 
+                document.getElementById('liveVoltageView').classList.remove('hidden'); document.getElementById('liveVoltageView').classList.add('flex'); 
+                startLiveVoltage();
+            }
+            if(view === 'circuit-diagram') { document.getElementById('circuitDiagramView').classList.remove('hidden'); document.getElementById('circuitDiagramView').classList.add('flex'); }
+            if(view === 'ai-chat') { document.getElementById('aiChatView').classList.remove('hidden'); document.getElementById('aiChatView').classList.add('flex'); }
+            if(view === 'admin-settings') { document.getElementById('adminSettingsView').classList.remove('hidden'); document.getElementById('adminSettingsView').classList.add('flex'); }
         }
 
-        async function saveMasterPin() {
-            const pin = document.getElementById('newMasterPin').value.trim();
-            if(pin.length !== 8 || isNaN(pin)) { alert('Enter exactly 8 digits!'); return; }
-            const res = await fetch('/api/set-pin', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ pin: pin }) });
+        // --- LIVE VOLTAGE ---
+        let voltageInterval;
+        function startLiveVoltage() {
+            clearInterval(voltageInterval);
+            voltageInterval = setInterval(() => {
+                fetch('/api/tools/live-voltage').then(res => res.json()).then(data => {
+                    document.getElementById('voltVal').innerText = data.voltage.toFixed(2);
+                    document.getElementById('currVal').innerText = data.current.toFixed(2);
+                });
+            }, 1000);
+        }
+
+        // --- CIRCUIT DIAGRAM ---
+        async function loadCircuitDiagram(brand, model) {
+            switchView('circuit-diagram');
+            document.getElementById('diagramTitle').innerText = `${brand} ${model} - Master Layout`;
+            document.getElementById('diagramContent').innerHTML = '<p class="text-yellow-400 animate-pulse">Loading deep circuit logic...</p>';
+            
+            const res = await fetch(`/api/tools/circuit-diagram/${brand}/${model}`);
             const data = await res.json();
-            if (data.status === 'success') {
-                document.getElementById('savePinMsg').classList.remove('hidden');
-                document.getElementById('activePinDisplay').innerText = pin;
-                setTimeout(() => document.getElementById('savePinMsg').classList.add('hidden'), 2000);
-            } else { alert(data.message); }
+            
+            let html = `
+                <div class="mb-4">
+                    <h4 class="text-sm font-bold text-sky-400 uppercase mb-2">Major Components (ICs)</h4>
+                    <div class="flex flex-wrap gap-2">${data.components.map(c => `<span class="bg-slate-800 border border-slate-600 px-3 py-1 rounded text-xs text-white">${c}</span>`).join('')}</div>
+                </div>
+                <div class="mb-4">
+                    <h4 class="text-sm font-bold text-emerald-400 uppercase mb-2">Main Power Paths</h4>
+                    <ul class="list-disc pl-5 text-sm text-slate-300">${data.paths.map(p => `<li>${p}</li>`).join('')}</ul>
+                </div>
+                <div class="bg-red-900/20 border border-red-500/50 p-4 rounded-lg">
+                    <h4 class="text-sm font-bold text-red-400 uppercase mb-2"><i class="fas fa-exclamation-triangle mr-2"></i>Master Logic Analysis</h4>
+                    <p class="text-sm text-slate-300 font-mono">${data.logic}</p>
+                </div>
+            `;
+            document.getElementById('diagramContent').innerHTML = html;
         }
 
-        async function verifyPin() {
-            const pin = document.getElementById('unlockPinInput').value;
-            if(pin.length !== 8) { alert('Enter 8-digit PIN'); return; }
-            const res = await fetch('/api/verify-pin', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ pin: pin }) });
-            const data = await res.json();
-            if (data.status === 'success') {
-                document.getElementById('unlockPinInput').value = '';
-                document.getElementById('viewReportBtn').classList.remove('hidden');
-                alert('Access Granted! Check Tools Panel.');
-                switchView('dashboard');
-            } else { alert('Invalid Password!'); }
-        }
-
-        // --- AI DIAGNOSTIC ---
+        // --- AI CHAT ---
+        function handleChat(e) { if(e.key === 'Enter') sendMessage(); }
         
-        async function runTool(tool) {
-            const output = document.getElementById('terminalOutput');
-            const bar = document.getElementById('progressBar');
-            const pct = document.getElementById('progressPercent');
-            const txt = document.getElementById('progressText');
-            bar.style.width = '0%'; pct.innerText = '0%'; txt.innerText = 'Running...';
-            output.innerHTML = '<p class="text-yellow-400">> Connecting...</p>';
-
-            const res = await fetch(`/api/tools/${tool}`, { method: 'POST' });
-            const data = await res.json();
-            output.innerHTML = '';
-            let i = 0;
-            function next() {
-                if (i < data.steps.length) {
-                    let s = data.steps[i];
-                    bar.style.width = s.progress + '%'; pct.innerText = s.progress + '%';
-                    let cls = s.text.includes('SUCCESS') ? 'text-green-400 font-bold' : 'text-slate-300';
-                    output.innerHTML += `<p class="${cls} mb-1 border-b border-slate-800 pb-1">> ${s.text}</p>`;
-                    output.scrollTop = output.scrollHeight;
-                    i++; setTimeout(next, 600);
-                } else txt.innerText = 'Done';
-            }
-            next();
-        }
-
-
-        async function startDeepScan() {
-            switchView('diagnostic');
-            const output = document.getElementById('deepTerminal');
-            const bar = document.getElementById('deepProgressBar');
-            const pct = document.getElementById('deepProgressPercent');
-            const txt = document.getElementById('deepProgressText');
-            bar.style.width = '0%'; pct.innerText = '0%'; txt.innerText = 'Scanning...';
-            output.innerHTML = '<p class="text-yellow-400">> Connecting...</p>';
-
-            const res = await fetch('/api/tools/deep-scan', { method: 'POST' });
-            const data = await res.json();
-            output.innerHTML = '';
-            let i = 0;
+        async function sendMessage() {
+            const input = document.getElementById('chatInput');
+            const text = input.value.trim();
+            if(!text) return;
             
-            function next() {
-                if (i < data.steps.length) {
-                    let s = data.steps[i];
-                    bar.style.width = s.progress + '%'; pct.innerText = s.progress + '%';
-                    let cls = s.text.includes('SUCCESS') ? 'text-green-400 font-bold' : 'text-slate-300';
-                    output.innerHTML += `<p class="${cls} mb-1 border-b border-slate-800 pb-1">> ${s.text}</p>`;
-                    output.scrollTop = output.scrollHeight;
-                    i++; setTimeout(next, 600);
-                } else {
-                    txt.innerText = 'Complete';
-                    output.innerHTML += `<br><p class="text-sky-400 font-bold">=== DETAILED READ DATA ===</p>`;
-                    let count = 1;
-                    for (let [key, value] of Object.entries(data.report)) {
-                        let status = value > 80 ? "Healthy" : (value > 60 ? "Good" : "Needs Attention");
-                        output.innerHTML += `<p class="text-green-400">[${count}] ${key}: ${value}% (${status})</p>`;
-                        count++;
-                    }
-                    output.scrollTop = output.scrollHeight;
-                    
-                    setTimeout(() => {
-                        renderReport(data.report, data.solution);
-                    }, 1500);
-                }
-            }
-            next();
-        }
-
-        function renderReport(report, solution) {
-            switchView('report');
+            const chatBox = document.getElementById('chatBox');
+            chatBox.innerHTML += `<div class="chat-bubble chat-user">${text}</div>`;
+            input.value = '';
+            chatBox.scrollTop = chatBox.scrollHeight;
             
-            // ১. চার্ট রেন্ডার
-            const ctx = document.getElementById('reportChart').getContext('2d');
-            if(myChart) myChart.destroy();
-            myChart = new Chart(ctx, {
-                type: 'radar', data: { labels: Object.keys(report), datasets: [{ label: 'Health %', data: Object.values(report), backgroundColor: 'rgba(56, 189, 248, 0.2)', borderColor: 'rgba(56, 189, 248, 1)', borderWidth: 2 }] },
-                options: { responsive: true, maintainAspectRatio: false, scales: { r: { angleLines: { color: '#334155' }, grid: { color: '#334155' }, pointLabels: { color: '#e2e8f0' }, ticks: { display: false, min: 0, max: 100 } } } }
-            });
-
-            // ২. AI সলিউশন
-            document.getElementById('aiSolutionText').innerText = solution;
-
-            // ৩. টেক্সট রিপোর্ট
-            let text = "=== DEVICE DIAGNOSTIC REPORT ===\n\n";
-            text += "--- HARDWARE READ DATA ---\n";
-            let count = 1;
-            for (let [key, value] of Object.entries(report)) {
-                let status = value > 80 ? "Healthy" : (value > 60 ? "Good" : "Needs Attention");
-                text += `[${count}] ${key.padEnd(10)}: ${value}% (${status})\n`;
-                count++;
-            }
-            text += "\n=== AI SOLUTION ===\n" + solution;
-            currentReportText = text;
-            document.getElementById('textReportOutput').innerText = text;
-        }
-
-        function copyText() {
-            if(!currentReportText) return;
-            navigator.clipboard.writeText(currentReportText).then(() => alert("Report Copied!"));
-        }
-
-        async function generateQR() {
-            const res = await fetch('/api/generate-qr', { method: 'POST' });
+            // টাইপিং ইন্ডিকেটর
+            const loadingId = 'loading-' + Date.now();
+            chatBox.innerHTML += `<div id="${loadingId}" class="chat-bubble chat-ai text-slate-400 italic">AI is thinking...</div>`;
+            chatBox.scrollTop = chatBox.scrollHeight;
+            
+            const res = await fetch('/api/ai/chat', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ prompt: text }) });
             const data = await res.json();
-            alert("Secure PIN for QR: " + data.pin);
+            
+            document.getElementById(loadingId).remove();
+            chatBox.innerHTML += `<div class="chat-bubble chat-ai">${data.reply}</div>`;
+            chatBox.scrollTop = chatBox.scrollHeight;
         }
 
-        function closeReport() {
-            document.getElementById('viewReportBtn').classList.add('hidden');
-            switchView('dashboard');
+        // --- ENCRYPTED MASTER DATA MANAGER ---
+        async function generateEncryptedToken() {
+            const res = await fetch('/api/admin/encrypt-token', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ data: "Super Secret Hardware Data" }) });
+            const data = await res.json();
+            document.getElementById('tokenOutput').value = data.token;
+        }
+
+        async function executeManagerInstruction() {
+            const token = document.getElementById('inputToken').value.trim();
+            const instruction = document.getElementById('instructionSelect').value;
+            const resultDiv = document.getElementById('managerResult');
+            
+            if(!token) { alert('Paste a token first!'); return; }
+            resultDiv.innerHTML = '<span class="text-yellow-400 animate-pulse">MasterDataManager is processing...</span>';
+            
+            const res = await fetch('/api/admin/execute', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ token: token, instruction: instruction }) });
+            const data = await res.json();
+            
+            if(data.status === 'success') {
+                resultDiv.innerHTML = `<p class="text-green-400 font-bold">✅ ${data.ai_result.message}</p><p class="text-xs text-slate-500 mt-1">Decrypted Payload: ${JSON.stringify(data.data)}</p>`;
+            } else {
+                resultDiv.innerHTML = `<p class="text-red-400">❌ ${data.message}</p>`;
+            }
         }
     </script>
 </body>
