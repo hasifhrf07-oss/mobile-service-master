@@ -1,0 +1,23 @@
+{
+    "authorized_ais": {
+        "lead_architect": {
+            "status": "active",
+            "permissions": [
+                "read",
+                "write",
+                "execute"
+            ]
+        },
+        "client_bot": {
+            "status": "active",
+            "permissions": [
+                "read"
+            ]
+        },
+        "unauthorized_system": {
+            "status": "blocked",
+            "permissions": []
+        }
+    },
+    "master_key": "MSM-ADMIN-AI-2026"
+}
